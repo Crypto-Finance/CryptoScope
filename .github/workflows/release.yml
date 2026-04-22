@@ -66,6 +66,11 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Generate changelog
         id: changelog
         run: |
