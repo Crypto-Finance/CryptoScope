@@ -1,42 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-/// Symbol status enum based on Bybit API
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum SymbolStatus {
-    Trading,
-    PreLaunch,
-    Delivered,
-    Closed,
-    Delisted,
-    #[serde(other)]
-    Unknown,
-}
-
-impl std::fmt::Display for SymbolStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SymbolStatus::Trading => write!(f, "Trading"),
-            SymbolStatus::PreLaunch => write!(f, "PreLaunch"),
-            SymbolStatus::Delivered => write!(f, "Delivered"),
-            SymbolStatus::Closed => write!(f, "Closed"),
-            SymbolStatus::Delisted => write!(f, "Delisted"),
-            SymbolStatus::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
-
 /// Represents a cryptocurrency trading instrument/symbol.
 ///
-/// Contains metadata about a trading pair including status, contract type,
+/// Contains metadata about a trading pair including contract type,
 /// and other trading parameters from the Bybit exchange.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Symbol {
     /// The symbol/ticker name (e.g., "BTCUSDT")
     pub symbol: String,
-    /// Current trading status of the symbol
-    #[serde(rename = "status")]
-    pub status: SymbolStatus,
     /// Category of the instrument (e.g., "linear", "inverse")
     #[serde(rename = "category", default)]
     pub category: Option<String>,
@@ -90,16 +61,6 @@ impl Symbol {
     pub fn quote_coin(&self) -> &str {
         self.quote_coin.as_deref().unwrap_or("UNKNOWN")
     }
-}
-
-impl Symbol {
-    /// Check if symbol is currently trading
-    ///
-    /// Returns `true` if the symbol status is `Trading`, indicating active trading.
-    #[allow(dead_code)]
-    pub fn is_trading(&self) -> bool {
-        self.status == SymbolStatus::Trading
-    }
 
     /// Get a short description of the contract type
     ///
@@ -113,24 +74,5 @@ impl Symbol {
             "InverseFutures" => "Inverse Futures",
             other => other,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_trading_status() {
-        let json = r#""Trading""#;
-        let status: SymbolStatus = serde_json::from_str(json).unwrap();
-        assert_eq!(status, SymbolStatus::Trading);
-    }
-
-    #[test]
-    fn test_parse_unknown_status() {
-        let json = r#""SomeNewStatus""#;
-        let status: SymbolStatus = serde_json::from_str(json).unwrap();
-        assert_eq!(status, SymbolStatus::Unknown);
     }
 }
