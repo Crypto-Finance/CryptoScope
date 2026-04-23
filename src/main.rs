@@ -4,17 +4,25 @@ mod exchange;
 mod fetcher;
 mod models;
 mod output;
+mod tui;
 
 use anyhow::Result;
+use std::sync::OnceLock;
 use std::time::Instant;
 use tracing::{Level, info};
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::reload::Handle;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt};
 
-use cli::Cli;
+use cli::{Cli, OutputMode};
 use exchange::create_exchange;
 use fetcher::InstrumentFetcher;
 use models::Statistics;
 use output::{SymbolFilter, TextFormatter, print_json};
+
+type ReloadHandle = Handle<EnvFilter, Registry>;
+
+static LOG_RELOAD_HANDLE: OnceLock<ReloadHandle> = OnceLock::new();
 
 /// Run the main application logic
 ///
@@ -36,10 +44,9 @@ async fn run(cli: Cli) -> Result<()> {
     info!("Total symbols fetched: {}", all_symbols.len());
 
     // Apply filters if specified
-    let filtered_symbols =
-        SymbolFilter::apply(&all_symbols, cli.search.as_deref(), cli.status.as_deref());
+    let filtered_symbols = SymbolFilter::apply(&all_symbols, cli.search.as_deref());
 
-    if cli.search.is_some() || cli.status.is_some() {
+    if cli.search.is_some() {
         info!(
             "Filtered from {} to {} symbols",
             all_symbols.len(),
@@ -54,11 +61,17 @@ async fn run(cli: Cli) -> Result<()> {
     let elapsed = start_time.elapsed();
 
     // Output results
-    if cli.is_json_output() {
-        print_json(&cli.exchange, &categories, &filtered_symbols, &stats)?;
-    } else {
-        TextFormatter::format(&cli.exchange, &categories, &filtered_symbols, &stats);
-        println!("✅ Fetch completed in {:.1}s", elapsed.as_secs_f64());
+    match cli.output {
+        OutputMode::Json => {
+            print_json(&cli.exchange, &categories, &filtered_symbols, &stats)?;
+        }
+        OutputMode::Tui => {
+            tui::TuiApp::run(&cli.exchange, &categories).await?;
+        }
+        OutputMode::Text => {
+            TextFormatter::format(&cli.exchange, &categories, &filtered_symbols, &stats);
+            println!("✅ Fetch completed in {:.1}s", elapsed.as_secs_f64());
+        }
     }
 
     Ok(())
@@ -66,27 +79,38 @@ async fn run(cli: Cli) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Parse CLI arguments
     let cli = Cli::parse_args();
 
-    // Initialize logging
     let log_level = if cli.verbose {
         Level::DEBUG
     } else {
         Level::INFO
     };
-    FmtSubscriber::builder()
-        .with_max_level(log_level)
-        .with_target(false)
-        .with_thread_ids(false)
-        .with_file(false)
-        .with_line_number(false)
+
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(format!("cryptoscope={log_level}")));
+
+    let (filter_layer, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
+
+    Registry::default()
+        .with(filter_layer)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .with_thread_ids(false)
+                .with_file(false)
+                .with_line_number(false),
+        )
         .init();
+
+    let _ = LOG_RELOAD_HANDLE.set(reload_handle);
 
     info!("Starting CryptoScope...");
     info!(
-        "Exchange: {}, Category: {}, Output: {}",
-        cli.exchange, cli.category, cli.output
+        "Exchange: {}, Category: {:?}, Output: {:?}",
+        cli.exchange,
+        cli.get_categories(),
+        cli.output
     );
 
     run(cli).await
