@@ -2,7 +2,8 @@ use crate::exchange::create_exchange;
 use crate::fetcher::InstrumentFetcher;
 use crate::tui::app::AppState;
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{MouseEvent, MouseEventKind};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::cell::RefCell;
@@ -110,7 +111,9 @@ impl TuiApp {
 
         // Main event loop
         loop {
-            let click_regions_cell = RefCell::new(crate::tui::mouse::ClickRegions::new());
+            // RefCell needed: render closure is FnMut and borrows mutably;
+        // can't pass &mut click_regions through closure boundary.
+        let click_regions_cell = RefCell::new(crate::tui::mouse::ClickRegions::new());
             
             let mut state_write = state.write().await;
             terminal.draw(|frame| {

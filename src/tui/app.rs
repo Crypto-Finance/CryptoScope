@@ -1,7 +1,7 @@
 use crate::models::Statistics;
 use crate::models::symbol::Symbol;
 use crate::output::SymbolFilter;
-use crate::tui::mouse::ClickAction;
+use crate::tui::mouse::{ClickAction, HeaderTab, ScrollDirection};
 use ratatui::widgets::TableState;
 use std::time::Instant;
 
@@ -202,31 +202,27 @@ impl AppState {
     }
 
     /// Handle click on a header tab.
-    pub fn on_header_tab_click(&mut self, tab: crate::tui::mouse::HeaderTab) {
-        match tab {
-            crate::tui::mouse::HeaderTab::SymbolList => {
-                self.view = crate::tui::app::AppView::SymbolList;
-            }
-            crate::tui::mouse::HeaderTab::StatsDashboard => {
-                self.view = crate::tui::app::AppView::StatsDashboard;
-            }
-        }
+    pub fn on_header_tab_click(&mut self, tab: HeaderTab) {
+        self.view = match tab {
+            HeaderTab::SymbolList => AppView::SymbolList,
+            HeaderTab::StatsDashboard => AppView::StatsDashboard,
+        };
     }
 
     /// Handle click on scrollbar track for page up/down.
-    pub fn on_scrollbar_track_click(&mut self, direction: crate::tui::mouse::ScrollDirection) {
+    pub fn on_scrollbar_track_click(&mut self, direction: ScrollDirection) {
         if self.filtered.is_empty() {
             return;
         }
         // Jump 20% of list or 10 rows, whichever is larger
         let jump = 10.max(self.filtered.len() / 5);
         match direction {
-            crate::tui::mouse::ScrollDirection::Up => {
+            ScrollDirection::Up => {
                 let current = self.table_state.selected().unwrap_or(0);
                 let new_pos = current.saturating_sub(jump);
                 self.table_state.select(Some(new_pos));
             }
-            crate::tui::mouse::ScrollDirection::Down => {
+            ScrollDirection::Down => {
                 let current = self.table_state.selected().unwrap_or(0);
                 let new_pos = (current + jump).min(self.filtered.len().saturating_sub(1));
                 self.table_state.select(Some(new_pos));
