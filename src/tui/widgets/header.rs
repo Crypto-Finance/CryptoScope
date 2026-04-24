@@ -43,7 +43,4 @@ pub fn render(
 
     let paragraph = Paragraph::new(lines).block(block);
     frame.render_widget(paragraph, area);
-
-    // Note: Header tab click regions removed — no visible tab text exists
-    // for users to click on. Tabs are toggled via keyboard (Tab key).
 }

@@ -3,7 +3,7 @@ use crate::tui::mouse::{ClickAction, ClickRegions};
 use crate::tui::theme::CyberdeckTheme;
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
@@ -18,10 +18,7 @@ pub fn render(
     if state.loading {
         spans.push(Span::styled(
             " ⏳ Refreshing... ",
-            Style::default()
-                .fg(CyberdeckTheme::WHITE)
-                .bg(CyberdeckTheme::DARK_BG)
-                .add_modifier(Modifier::BOLD),
+            CyberdeckTheme::footer_item_style(),
         ));
     }
 
@@ -35,10 +32,7 @@ pub fn render(
     let count_text = format!(" Rows: {} ", state.filtered.len());
     spans.push(Span::styled(
         &count_text,
-        Style::default()
-            .fg(CyberdeckTheme::WHITE)
-            .bg(CyberdeckTheme::DARK_BG)
-            .add_modifier(Modifier::BOLD),
+        CyberdeckTheme::footer_item_style(),
     ));
 
     let view_text = match &state.view {
@@ -47,10 +41,7 @@ pub fn render(
     };
     spans.push(Span::styled(
         view_text,
-        Style::default()
-            .fg(CyberdeckTheme::WHITE)
-            .bg(CyberdeckTheme::DARK_BG)
-            .add_modifier(Modifier::BOLD),
+        CyberdeckTheme::footer_item_style(),
     ));
 
     let keys = " [q/Esc]quit [j/k]nav [/]search [r]efresh ";
@@ -77,8 +68,10 @@ pub fn render(
     );
 
     // Scroll down (bottom half of right edge)
+    let scroll_y = area.y + scroll_height / 2;
+    let scroll_h = scroll_height - scroll_height / 2;
     click_regions.add(
-        Rect::new(area.x + area.width - scroll_width, area.y + scroll_height / 2, scroll_width, scroll_height - scroll_height / 2),
+        Rect::new(area.x + area.width - scroll_width, scroll_y, scroll_width, scroll_h),
         ClickAction::ScrollDown,
     );
 }

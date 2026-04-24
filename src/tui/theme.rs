@@ -42,4 +42,12 @@ impl CyberdeckTheme {
             .bg(Self::LINE)
             .add_modifier(Modifier::BOLD)
     }
+
+    /// Style for footer item spans (white text on dark background, bold).
+    pub fn footer_item_style() -> Style {
+        Style::default()
+            .fg(Self::WHITE)
+            .bg(Self::DARK_BG)
+            .add_modifier(Modifier::BOLD)
+    }
 }
