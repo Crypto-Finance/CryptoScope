@@ -10,7 +10,7 @@ Fetch and analyze perpetual/derivative symbols from crypto exchanges with a clea
 - ✅ Fetch all perpetual and derivative symbols from Exchange
 - ✅ Support for both linear (USDT) and inverse categories
 - ✅ Automatic pagination handling
-- ✅ Filter by symbol name or status
+- ✅ Filter by symbol name (case-insensitive search)
 - ✅ Multiple output formats (text, JSON, interactive TUI)
 - ✅ Modular architecture - easy to add new exchanges
 - ✅ Fast execution (< 3 seconds for all symbols)
@@ -20,7 +20,7 @@ Fetch and analyze perpetual/derivative symbols from crypto exchanges with a clea
 ```bash
 # Clone and build
 git clone https://github.com/HanSoBored/CryptoScope
-cd cryptoscope
+cd CryptoScope
 cargo build --release
 
 # Or install directly
@@ -134,6 +134,11 @@ The TUI features:
 | `/` | Toggle search mode |
 | `Tab` | Toggle symbol list / stats view |
 | `r` | Refresh data |
+
+**Mouse support:**
+- Scroll wheel to navigate
+- Click rows to select symbols
+- Click scrollbar track to page up/down
 
 ---
 
