@@ -32,7 +32,7 @@ impl CyberdeckTheme {
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Self::LINE))
             .title(format!(" {title} "))
-            .title_style(Style::default().fg(Self::TAG).add_modifier(Modifier::BOLD))
+            .title_style(Style::default().fg(Self::BLUE).add_modifier(Modifier::BOLD))
             .style(Style::default().fg(Self::WHITE).bg(Self::BLACK))
     }
 
