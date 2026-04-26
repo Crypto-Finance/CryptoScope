@@ -4,6 +4,7 @@ use crate::models::Symbol;
 use tracing::info;
 
 /// Fetch instruments for a single category.
+#[allow(dead_code)]
 pub async fn fetch_category(exchange: &dyn Exchange, category: &str) -> Result<Vec<Symbol>> {
     exchange.fetch_instruments(category).await
 }

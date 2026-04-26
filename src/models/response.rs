@@ -90,10 +90,13 @@ pub struct TickerRawResponse {
     /// Price 24 hours ago as a string.
     pub prev_price_24h: String,
     /// Price change percentage over 24h as a string.
+    #[allow(dead_code)]
     pub price_24h_pcnt: String,
     /// Highest price in the last 24h as a string.
+    #[allow(dead_code)]
     pub high_price_24h: String,
     /// Lowest price in the last 24h as a string.
+    #[allow(dead_code)]
     pub low_price_24h: String,
     /// Trading volume in the last 24h as a string.
     pub volume_24h: String,
