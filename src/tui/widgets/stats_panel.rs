@@ -46,17 +46,23 @@ fn render_total_panel(frame: &mut Frame, area: Rect, state: &AppState) {
 }
 
 fn render_category_panel(frame: &mut Frame, area: Rect, state: &AppState) {
-    let items = collect_sorted_stats(state.stats.iter().flat_map(|stats| {
-        stats.by_category.iter().map(|(k, v)| (k.clone(), *v))
-    }));
+    let items = collect_sorted_stats(
+        state
+            .stats
+            .iter()
+            .flat_map(|stats| stats.by_category.iter().map(|(k, v)| (k.clone(), *v))),
+    );
 
     render_stat_panel(" By Category ", &items, 12, frame, area);
 }
 
 fn render_contract_panel(frame: &mut Frame, area: Rect, state: &AppState) {
-    let items = collect_sorted_stats(state.stats.iter().flat_map(|stats| {
-        stats.by_contract_type.iter().map(|(k, v)| (k.clone(), *v))
-    }));
+    let items = collect_sorted_stats(
+        state
+            .stats
+            .iter()
+            .flat_map(|stats| stats.by_contract_type.iter().map(|(k, v)| (k.clone(), *v))),
+    );
 
     render_stat_panel(" By Contract ", &items, 20, frame, area);
 }
@@ -91,10 +97,7 @@ fn render_stat_panel(
                     format!("{label:<label_width$}"),
                     Style::default().fg(theme::WHITE),
                 ),
-                Span::styled(
-                    format!(" {count}"),
-                    Style::default().fg(theme::WHITE),
-                ),
+                Span::styled(format!(" {count}"), Style::default().fg(theme::WHITE)),
             ])
         })
         .collect();

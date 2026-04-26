@@ -1,6 +1,6 @@
 use chrono::Utc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::time::{sleep, timeout};
@@ -35,12 +35,13 @@ async fn fetch_single_kline(
     exch: Arc<dyn Exchange>,
 ) -> Result<DailyKline> {
     // Acquire semaphore permit first, then apply per-request delay
-    let _permit = sem.acquire().await.map_err(|e| {
-        crate::error::CryptoScopeError::ApiError {
+    let _permit = sem
+        .acquire()
+        .await
+        .map_err(|e| crate::error::CryptoScopeError::ApiError {
             code: -1,
             message: format!("Semaphore closed while acquiring permit for {symbol}: {e}"),
-        }
-    })?;
+        })?;
 
     // Per-request delay to stay within rate limits (applied to active requests)
     sleep(Duration::from_millis(PER_REQUEST_DELAY_MS)).await;
@@ -78,10 +79,15 @@ where
         }
     }
 
-    Err(last_err.unwrap_or_else(|| crate::error::CryptoScopeError::ApiError {
-        code: -1,
-        message: format!("All {} retries exhausted for symbol '{}'", MAX_KLINE_RETRIES, symbol),
-    }))
+    Err(
+        last_err.unwrap_or_else(|| crate::error::CryptoScopeError::ApiError {
+            code: -1,
+            message: format!(
+                "All {} retries exhausted for symbol '{}'",
+                MAX_KLINE_RETRIES, symbol
+            ),
+        }),
+    )
 }
 
 /// Log progress every 50 symbols.
@@ -210,12 +216,11 @@ impl<'a> OpenPriceFetcher<'a> {
             let tx = tx.clone();
 
             tokio::spawn(async move {
-                let result = timeout(KLINE_FETCH_TIMEOUT, fetch_single_kline(
-                    symbol.clone(),
-                    ticker_category,
-                    sem,
-                    exch,
-                )).await;
+                let result = timeout(
+                    KLINE_FETCH_TIMEOUT,
+                    fetch_single_kline(symbol.clone(), ticker_category, sem, exch),
+                )
+                .await;
 
                 let open_price = match result {
                     Ok(Ok(kline)) => Some(kline.open_price),
@@ -304,7 +309,9 @@ mod tests {
     fn test_should_fetch_when_stale_date() {
         let mut db = create_test_db();
         // Insert stale data (yesterday)
-        let yesterday = (Utc::now() - chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
+        let yesterday = (Utc::now() - chrono::Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string();
         let row = OpenPriceRow {
             symbol: "BTCUSDT".to_string(),
             open_price: 50000.0,

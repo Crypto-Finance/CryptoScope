@@ -14,9 +14,7 @@ const TOP_BORDER: u16 = 1;
 /// Determine row style based on selection state.
 fn row_style(is_selected: bool) -> Style {
     if is_selected {
-        Style::default()
-            .fg(theme::TAG)
-            .add_modifier(Modifier::BOLD)
+        Style::default().fg(theme::TAG).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme::WHITE)
     }
@@ -158,11 +156,7 @@ pub fn render(
     let table = Table::new(rows, widths)
         .header(header)
         .block(theme::themed_block(" List Crypto "))
-        .row_highlight_style(
-            Style::default()
-                .fg(theme::TAG)
-                .add_modifier(Modifier::BOLD),
-        )
+        .row_highlight_style(Style::default().fg(theme::TAG).add_modifier(Modifier::BOLD))
         .highlight_symbol("▸ ");
 
     add_click_regions(click_regions, content_area, state);

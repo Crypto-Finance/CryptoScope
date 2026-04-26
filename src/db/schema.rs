@@ -12,14 +12,12 @@ const SQL_CHECK_SCHEMA_TABLE: &str =
 
 const SQL_MAX_SCHEMA_VERSION: &str = "SELECT MAX(version) FROM schema_version";
 
-const SQL_CREATE_SCHEMA_VERSION: &str =
-    "CREATE TABLE IF NOT EXISTS schema_version (
+const SQL_CREATE_SCHEMA_VERSION: &str = "CREATE TABLE IF NOT EXISTS schema_version (
         version INTEGER PRIMARY KEY,
         applied_at INTEGER NOT NULL
     )";
 
-const SQL_CREATE_DAILY_OPEN_PRICES: &str =
-    "CREATE TABLE IF NOT EXISTS daily_open_prices (
+const SQL_CREATE_DAILY_OPEN_PRICES: &str = "CREATE TABLE IF NOT EXISTS daily_open_prices (
         symbol TEXT PRIMARY KEY,
         open_price REAL NOT NULL,
         fetch_date TEXT NOT NULL,
@@ -30,8 +28,7 @@ const SQL_CREATE_DAILY_OPEN_PRICES: &str =
 const SQL_IDX_FETCH_DATE: &str =
     "CREATE INDEX IF NOT EXISTS idx_fetch_date ON daily_open_prices(fetch_date)";
 
-const SQL_RECORD_VERSION: &str =
-    "INSERT OR REPLACE INTO schema_version (version, applied_at) \
+const SQL_RECORD_VERSION: &str = "INSERT OR REPLACE INTO schema_version (version, applied_at) \
      VALUES (?1, strftime('%s', 'now'))";
 
 /// Get the current schema version from the database.
@@ -39,16 +36,14 @@ const SQL_RECORD_VERSION: &str =
 /// Returns `None` if the schema_version table doesn't exist yet (pre-versioning database)
 /// or if the table exists but has no rows.
 fn get_schema_version(conn: &Connection) -> Result<Option<i64>> {
-    let table_exists: bool =
-        conn.query_row(SQL_CHECK_SCHEMA_TABLE, [], |row| row.get(0))?;
+    let table_exists: bool = conn.query_row(SQL_CHECK_SCHEMA_TABLE, [], |row| row.get(0))?;
 
     if !table_exists {
         return Ok(None);
     }
 
     // MAX() returns NULL on empty table, so we query as Option<i64>
-    let version: Option<i64> =
-        conn.query_row(SQL_MAX_SCHEMA_VERSION, [], |row| row.get(0))?;
+    let version: Option<i64> = conn.query_row(SQL_MAX_SCHEMA_VERSION, [], |row| row.get(0))?;
     Ok(version)
 }
 

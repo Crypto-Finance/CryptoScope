@@ -9,10 +9,7 @@ pub async fn fetch_category(exchange: &dyn Exchange, category: &str) -> Result<V
 }
 
 /// Fetch instruments for multiple categories.
-pub async fn fetch_categories(
-    exchange: &dyn Exchange,
-    categories: &[&str],
-) -> Result<Vec<Symbol>> {
+pub async fn fetch_categories(exchange: &dyn Exchange, categories: &[&str]) -> Result<Vec<Symbol>> {
     let mut all_symbols = Vec::new();
 
     for category in categories {

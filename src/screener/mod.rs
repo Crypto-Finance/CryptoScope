@@ -104,11 +104,7 @@ mod tests {
             Ok(self.tickers.clone())
         }
 
-        async fn fetch_daily_kline(
-            &self,
-            _symbol: &str,
-            _category: &str,
-        ) -> Result<DailyKline> {
+        async fn fetch_daily_kline(&self, _symbol: &str, _category: &str) -> Result<DailyKline> {
             Ok(self.kline.clone())
         }
     }

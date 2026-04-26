@@ -5,12 +5,7 @@ use crate::utils::terminal_width;
 ///
 /// Outputs a complete formatted report including header, statistics,
 /// and sample symbols to stdout.
-pub fn format(
-    exchange_name: &str,
-    categories: &[&str],
-    symbols: &[Symbol],
-    stats: &Statistics,
-) {
+pub fn format(exchange_name: &str, categories: &[&str], symbols: &[Symbol], stats: &Statistics) {
     println!();
     print_header(exchange_name, categories);
     println!();

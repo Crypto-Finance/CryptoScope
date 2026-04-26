@@ -124,10 +124,7 @@ mod tests {
         let results = calculate_all(vec![("BTCUSDT".to_string(), 50000.0)], vec![]);
         assert!(results.is_empty());
 
-        let results = calculate_all(
-            vec![],
-            vec![create_test_ticker("BTCUSDT", 51000.0, 1000.0)],
-        );
+        let results = calculate_all(vec![], vec![create_test_ticker("BTCUSDT", 51000.0, 1000.0)]);
         assert!(results.is_empty());
     }
 

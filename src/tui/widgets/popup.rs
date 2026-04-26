@@ -49,16 +49,10 @@ pub fn render_popup(frame: &mut Frame, message: &str, is_error: bool) {
         (
             " ERROR ",
             theme::RED,
-            Style::default()
-                .fg(theme::RED)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(theme::RED).add_modifier(Modifier::BOLD),
         )
     } else {
-        (
-            " INFO ",
-            theme::BLUE,
-            Style::default().fg(theme::WHITE),
-        )
+        (" INFO ", theme::BLUE, Style::default().fg(theme::WHITE))
     };
 
     let block = Block::bordered()

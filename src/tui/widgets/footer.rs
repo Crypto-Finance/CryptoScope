@@ -25,10 +25,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &AppState, click_regions: &m
     }
 
     let count_text = format!(" Rows: {} ", state.filtered.len());
-    spans.push(Span::styled(
-        &count_text,
-        theme::footer_item_style(),
-    ));
+    spans.push(Span::styled(&count_text, theme::footer_item_style()));
 
     let view_text = match &state.view {
         crate::tui::app::AppView::SymbolList => " [Tab]Stats ",
@@ -39,9 +36,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &AppState, click_regions: &m
     let keys = " [q/Esc]quit [j/k]nav [/]search [r]efresh ";
     spans.push(Span::styled(
         keys,
-        Style::default()
-            .fg(theme::DIM)
-            .bg(theme::BLACK),
+        Style::default().fg(theme::DIM).bg(theme::BLACK),
     ));
 
     let line = Line::from(spans);

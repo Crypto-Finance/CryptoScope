@@ -105,18 +105,15 @@ pub fn display_stats(changes: &[PriceChange]) {
     println!("  Total: {} symbols", total);
 
     // Gainers
-    let (gainer_count, gainer_avg) =
-        compute_group_stats(changes, |c| c.change_percent > 0.0);
+    let (gainer_count, gainer_avg) = compute_group_stats(changes, |c| c.change_percent > 0.0);
     println!("  Gainers: {} (avg {:.2}%)", gainer_count, gainer_avg);
 
     // Losers
-    let (loser_count, loser_avg) =
-        compute_group_stats(changes, |c| c.change_percent < 0.0);
+    let (loser_count, loser_avg) = compute_group_stats(changes, |c| c.change_percent < 0.0);
     println!("  Losers: {} (avg {:.2}%)", loser_count, loser_avg);
 
     // Unchanged
-    let (unchanged_count, _) =
-        compute_group_stats(changes, |c| c.change_percent == 0.0);
+    let (unchanged_count, _) = compute_group_stats(changes, |c| c.change_percent == 0.0);
     println!("  Unchanged: {}", unchanged_count);
 }
 

@@ -37,12 +37,7 @@ fn check_api_response(ret_code: i32, ret_msg: &str) -> Result<()> {
 }
 
 /// Parse a single kline field by index with descriptive error messages.
-fn parse_kline_field(
-    data: &[String],
-    idx: usize,
-    field_name: &str,
-    symbol: &str,
-) -> Result<f64> {
+fn parse_kline_field(data: &[String], idx: usize, field_name: &str, symbol: &str) -> Result<f64> {
     let value = data.get(idx).ok_or_else(|| CryptoScopeError::ApiError {
         code: -1,
         message: format!(

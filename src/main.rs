@@ -34,11 +34,10 @@ async fn run_screener(cmd: &cli::ScreenerCmd) -> Result<()> {
     let exchange = create_exchange(&cmd.common.exchange)?;
     info!("Created exchange client: {}", exchange.name());
 
-    let categories: Vec<String> =
-        parse_categories_from(&cmd.common)?
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
+    let categories: Vec<String> = parse_categories_from(&cmd.common)?
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
     info!("Screener categories: {:?}", categories);
 
     if cmd.force_refresh {

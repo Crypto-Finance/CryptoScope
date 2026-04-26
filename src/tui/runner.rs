@@ -182,11 +182,7 @@ async fn poll_and_dispatch(
 }
 
 /// Handle a key press event. Returns `true` if the app should quit.
-fn handle_key_event(
-    app_state: &mut AppState,
-    key: KeyEvent,
-    state: &AppStateRef,
-) -> bool {
+fn handle_key_event(app_state: &mut AppState, key: KeyEvent, state: &AppStateRef) -> bool {
     if app_state.search_mode {
         handle_search_input(app_state, key);
         return false;
@@ -212,11 +208,7 @@ fn handle_search_input(app_state: &mut AppState, key: KeyEvent) {
 }
 
 /// Handle key input in normal mode. Returns `true` if the app should quit.
-fn handle_normal_keys(
-    app_state: &mut AppState,
-    key: KeyEvent,
-    state: &AppStateRef,
-) -> bool {
+fn handle_normal_keys(app_state: &mut AppState, key: KeyEvent, state: &AppStateRef) -> bool {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => true,
         KeyCode::Down | KeyCode::Char('j') => {
@@ -267,7 +259,12 @@ fn handle_mouse_event(
     }
 }
 
-fn spawn_fetch_task(state: &Arc<RwLock<AppState>>, exchange_name: &str, categories: &[String], is_refresh: bool) {
+fn spawn_fetch_task(
+    state: &Arc<RwLock<AppState>>,
+    exchange_name: &str,
+    categories: &[String],
+    is_refresh: bool,
+) {
     let state_clone = state.clone();
     let exchange = exchange_name.to_string();
     let cats = categories.to_vec();
@@ -297,23 +294,21 @@ async fn do_fetch(
     let cat_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
 
     match create_exchange(exchange) {
-        Ok(exchange_client) => {
-            match fetch_categories(&*exchange_client, &cat_refs).await {
-                Ok(symbols) => {
-                    info!("Fetched {} symbols", symbols.len());
-                    let mut s = state.write().await;
-                    s.set_symbols(symbols);
-                    if is_refresh {
-                        s.show_popup("Refresh complete".to_string(), false);
-                    }
-                }
-                Err(e) => {
-                    let mut s = state.write().await;
-                    let prefix = if is_refresh { "Refresh" } else { "Fetch" };
-                    s.show_popup(format!("{prefix} failed: {e}"), true);
+        Ok(exchange_client) => match fetch_categories(&*exchange_client, &cat_refs).await {
+            Ok(symbols) => {
+                info!("Fetched {} symbols", symbols.len());
+                let mut s = state.write().await;
+                s.set_symbols(symbols);
+                if is_refresh {
+                    s.show_popup("Refresh complete".to_string(), false);
                 }
             }
-        }
+            Err(e) => {
+                let mut s = state.write().await;
+                let prefix = if is_refresh { "Refresh" } else { "Fetch" };
+                s.show_popup(format!("{prefix} failed: {e}"), true);
+            }
+        },
         Err(e) => {
             let mut s = state.write().await;
             s.show_popup(format!("Exchange error: {e}"), true);

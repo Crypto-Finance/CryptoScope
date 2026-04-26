@@ -10,16 +10,12 @@ use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 pub fn render(frame: &mut Frame, area: Rect, state: &AppState, _click_regions: &mut ClickRegions) {
     let exchange_line = Line::from(vec![Span::styled(
         format!(" Exchange: {}", state.exchange_name.to_uppercase()),
-        Style::default()
-            .fg(theme::TAG)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(theme::TAG).add_modifier(Modifier::BOLD),
     )]);
 
     let category_line = Line::from(vec![Span::styled(
         format!("󰪩 Categories: {}", state.categories.join(", ")),
-        Style::default()
-            .fg(theme::TAG)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(theme::TAG).add_modifier(Modifier::BOLD),
     )]);
 
     let block = Block::default()

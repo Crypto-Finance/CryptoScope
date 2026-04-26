@@ -26,7 +26,8 @@ impl Database {
     ///
     /// Returns the most recent fetch_date if any data exists.
     pub fn get_stored_date(&self) -> Result<Option<String>> {
-        Ok(self.conn
+        Ok(self
+            .conn
             .query_row(
                 "SELECT fetch_date FROM daily_open_prices ORDER BY fetch_timestamp DESC LIMIT 1",
                 [],
@@ -38,7 +39,8 @@ impl Database {
     /// Get the cached open price for a specific symbol
     #[allow(dead_code)]
     pub fn get_open_price(&self, symbol: &str) -> Result<Option<f64>> {
-        Ok(self.conn
+        Ok(self
+            .conn
             .query_row(
                 "SELECT open_price FROM daily_open_prices WHERE symbol = ?",
                 [symbol],
@@ -49,7 +51,9 @@ impl Database {
 
     /// Get all cached open prices as (symbol, price) pairs
     pub fn get_all_open_prices(&self) -> Result<Vec<(String, f64)>> {
-        let mut stmt = self.conn.prepare("SELECT symbol, open_price FROM daily_open_prices")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT symbol, open_price FROM daily_open_prices")?;
 
         let price_iter = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))

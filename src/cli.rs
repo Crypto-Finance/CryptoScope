@@ -61,7 +61,9 @@ pub struct CommonArgs {
 }
 
 /// Parse categories from shared CLI arguments.
-pub fn parse_categories_from(common: &CommonArgs) -> Result<Vec<&'static str>, crate::error::CryptoScopeError> {
+pub fn parse_categories_from(
+    common: &CommonArgs,
+) -> Result<Vec<&'static str>, crate::error::CryptoScopeError> {
     parse_categories(&common.category)
 }
 
@@ -165,10 +167,16 @@ mod tests {
     #[test]
     fn test_parse_categories_from() {
         let cli_all = Cli::parse_from(["cryptoscope", "--category", "all"]);
-        assert_eq!(parse_categories_from(&cli_all.common).unwrap(), vec!["linear", "inverse"]);
+        assert_eq!(
+            parse_categories_from(&cli_all.common).unwrap(),
+            vec!["linear", "inverse"]
+        );
 
         let cli_linear = Cli::parse_from(["cryptoscope", "--category", "linear"]);
-        assert_eq!(parse_categories_from(&cli_linear.common).unwrap(), vec!["linear"]);
+        assert_eq!(
+            parse_categories_from(&cli_linear.common).unwrap(),
+            vec!["linear"]
+        );
     }
 
     #[test]
