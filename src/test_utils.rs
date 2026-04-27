@@ -1,5 +1,5 @@
 use crate::db::{Database, OpenPriceRow, init_schema};
-use crate::models::{DailyKline, PriceChange, Symbol, Ticker};
+use crate::models::{ContractType, DailyKline, PriceChange, Symbol, Ticker};
 use rusqlite::Connection;
 
 pub fn create_test_db() -> Database {
@@ -9,19 +9,18 @@ pub fn create_test_db() -> Database {
 }
 
 pub fn create_test_symbol(symbol: &str, category: &str) -> Symbol {
+    let contract_type = if category == "linear" {
+        Some("LinearPerpetual".to_string())
+    } else {
+        Some("InversePerpetual".to_string())
+    };
     Symbol {
         symbol: symbol.to_string(),
         category: Some(category.to_string()),
-        contract_type: if category == "linear" {
-            Some("Linear".to_string())
-        } else {
-            Some("InversePerpetual".to_string())
-        },
+        contract_type,
         base_coin: Some("BTC".to_string()),
         quote_coin: Some("USDT".to_string()),
-        launch_time: None,
-        delivery_time: None,
-        delivery_fee_rate: None,
+        ..Default::default()
     }
 }
 
@@ -41,6 +40,7 @@ pub fn create_test_price_change(symbol: &str) -> PriceChange {
     PriceChange {
         symbol: symbol.to_string(),
         category: "linear".to_string(),
+        contract_type: ContractType::LinearPerpetual,
         open_price: 49000.0,
         current_price: 50000.0,
         change_value: 1000.0,
@@ -60,7 +60,7 @@ pub fn create_test_open_price_row(symbol: &str) -> OpenPriceRow {
 }
 
 #[allow(dead_code)]
-pub fn create_test_kline(_symbol: &str) -> DailyKline {
+pub fn create_test_kline() -> DailyKline {
     DailyKline {
         open_price: 49000.0,
     }
