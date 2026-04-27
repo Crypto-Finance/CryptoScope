@@ -1,10 +1,11 @@
+use crate::models::ContractType;
 use serde::{Deserialize, Serialize};
 
 /// Represents a cryptocurrency trading instrument/symbol.
 ///
 /// Contains metadata about a trading pair including contract type,
 /// and other trading parameters from the Bybit exchange.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Symbol {
     /// The symbol/ticker name (e.g., "BTCUSDT")
     pub symbol: String,
@@ -40,12 +41,14 @@ impl Symbol {
         self.category.as_deref().unwrap_or("unknown")
     }
 
-    /// Get contract type with fallback
-    ///
-    /// Returns the contract type (e.g., "Linear", "InversePerpetual") or "Unknown"
-    /// if not specified.
+    /// Returns the contract type or `"Unknown"` if not specified.
     pub fn contract_type(&self) -> &str {
         self.contract_type.as_deref().unwrap_or("Unknown")
+    }
+
+    /// Returns the parsed contract type, computed on access.
+    pub fn contract_type_parsed(&self) -> ContractType {
+        ContractType::from_str(self.contract_type())
     }
 
     /// Get base coin with fallback
