@@ -85,7 +85,7 @@ fn distribute_widths(raw: [usize; 6], term_width: usize) -> [usize; 6] {
 }
 
 /// Display screener results with optional filtering and statistics.
-pub fn display(
+pub fn display_output(
     changes: &[PriceChange],
     top_n: Option<usize>,
     min_change: Option<f64>,
@@ -97,7 +97,7 @@ pub fn display(
 }
 
 /// Display summary statistics for price changes.
-pub fn display_stats(changes: &[PriceChange]) {
+pub fn display_output_stats(changes: &[PriceChange]) {
     let total = changes.len();
 
     println!();
@@ -199,12 +199,7 @@ fn print_header(col_widths: &[usize; 6]) {
 fn print_separator(col_widths: &[usize; 6]) {
     println!(
         "{:-<w1$}-+-{:-<w2$}-+-{:-<w3$}-+-{:-<w4$}-+-{:-<w5$}-+-{:-<w6$}",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
+        "", "", "", "", "", "",
         w1 = col_widths[0],
         w2 = col_widths[1],
         w3 = col_widths[2],
@@ -269,7 +264,13 @@ fn print_row(change: &PriceChange, col_widths: &[usize; 6]) {
     );
 }
 
-fn format_volume(volume: f64) -> String {
+/// Format volume with K/M/B suffixes for readability.
+///
+/// - >= 1B: `$X.XXB`
+/// - >= 1M: `$X.XXM`
+/// - >= 1K: `$X.XXK`
+/// - < 1K: `$X.XX`
+pub fn format_volume(volume: f64) -> String {
     if volume >= 1_000_000_000.0 {
         format!("${:.2}B", volume / 1_000_000_000.0)
     } else if volume >= 1_000_000.0 {

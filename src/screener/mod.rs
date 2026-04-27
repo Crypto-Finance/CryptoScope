@@ -15,7 +15,7 @@ pub mod calculator;
 pub mod fetcher;
 pub mod output;
 
-pub use output::{display as display_output, display_stats as display_output_stats};
+pub use output::{display_output, display_output_stats};
 
 pub struct Screener {
     db: Database,

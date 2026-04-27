@@ -1,8 +1,7 @@
 use chrono::Utc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Semaphore;
 use tokio::time::{sleep, timeout};
 use tracing::{info, warn};
 
@@ -13,19 +12,28 @@ use crate::exchange::Exchange;
 use crate::models::{DailyKline, Ticker};
 
 /// Maximum concurrent kline requests to respect rate limits.
-const MAX_CONCURRENT_KLINE_REQUESTS: usize = 2;
+const MAX_CONCURRENT_KLINE_REQUESTS: usize = 5;
 
-/// Per-request delay to respect Bybit rate limits (120 req/min = 500ms/request).
-const PER_REQUEST_DELAY_MS: u64 = 500;
+/// Number of symbols to spawn per chunk, bounding in-flight task memory.
+const KLINE_TASK_CHUNK_SIZE: usize = 50;
+
+/// Per-request delay to respect Bybit rate limits (120 req/min = 200ms/request).
+const PER_REQUEST_DELAY_MS: u64 = 200;
 
 /// Timeout for individual kline fetch tasks.
-const KLINE_FETCH_TIMEOUT: Duration = Duration::from_secs(30);
+const KLINE_FETCH_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Maximum retry attempts for rate-limited requests.
 const MAX_KLINE_RETRIES: u32 = 3;
 
 /// Initial backoff delay for retries (doubles each attempt).
 const KLINE_RETRY_BASE_DELAY_MS: u64 = 1000;
+
+/// Result type for kline fetch: symbol name and optional open price.
+type KlineResult = (String, Option<f64>);
+
+/// Collected kline results: symbol name and open price.
+type KlinePrice = (String, f64);
 
 /// Async task that fetches a single kline with rate-limit delay, semaphore, and retry logic.
 async fn fetch_single_kline(
@@ -194,20 +202,36 @@ impl<'a> OpenPriceFetcher<'a> {
     }
 
     /// Stream kline fetches with true concurrency using bounded semaphore and channel.
-    /// Spawns all tasks concurrently but limits active requests via semaphore.
-    /// Results are collected through a channel as they complete.
+    /// Spawns tasks in chunks to bound in-flight memory, then collects results as they complete.
     async fn stream_kline_results(
         tickers: &[Ticker],
         semaphore: &Arc<Semaphore>,
         exchange: &Arc<dyn Exchange>,
         total_symbols: usize,
-    ) -> Result<Vec<(String, f64)>> {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(total_symbols);
-        let results = Arc::new(Mutex::new(Vec::with_capacity(total_symbols)));
-        let failed_count = AtomicUsize::new(0);
-        let processed = AtomicUsize::new(0);
+    ) -> Result<Vec<KlinePrice>> {
+        let (tx, rx) = tokio::sync::mpsc::channel(total_symbols);
 
-        // Spawn all tasks concurrently — semaphore bounds active requests
+        // Spawn tasks in chunks to bound the number of in-flight tasks in memory.
+        for chunk in tickers.chunks(KLINE_TASK_CHUNK_SIZE) {
+            Self::spawn_kline_tasks(chunk, semaphore, exchange, tx.clone());
+        }
+
+        // Drop the original sender so the channel closes when all tasks complete
+        drop(tx);
+
+        Self::collect_kline_results(rx, total_symbols).await
+    }
+
+    /// Spawn concurrent kline fetch tasks for a chunk of tickers.
+    /// Each task sends its result through the channel; the caller must drop
+    /// the original sender after all chunks are spawned so the channel closes
+    /// when all tasks finish.
+    fn spawn_kline_tasks(
+        tickers: &[Ticker],
+        semaphore: &Arc<Semaphore>,
+        exchange: &Arc<dyn Exchange>,
+        tx: tokio::sync::mpsc::Sender<KlineResult>,
+    ) {
         for ticker in tickers {
             let symbol = ticker.symbol.clone();
             let ticker_category = ticker.category.clone();
@@ -240,31 +264,33 @@ impl<'a> OpenPriceFetcher<'a> {
                 let _ = tx.send((symbol, open_price)).await;
             });
         }
+    }
 
-        // Drop the original sender so the channel closes when all tasks complete
-        drop(tx);
+    /// Collect results from the channel as tasks complete.
+    async fn collect_kline_results(
+        mut rx: tokio::sync::mpsc::Receiver<KlineResult>,
+        total_symbols: usize,
+    ) -> Result<Vec<KlinePrice>> {
+        let mut results = Vec::with_capacity(total_symbols);
+        let mut failed_count = 0;
+        let mut processed = 0;
 
         // Collect results as they arrive
         while let Some((symbol, price)) = rx.recv().await {
             if let Some(open_price) = price {
-                results.lock().await.push((symbol, open_price));
+                results.push((symbol, open_price));
             } else {
-                failed_count.fetch_add(1, Ordering::Relaxed);
+                failed_count += 1;
             }
 
-            let processed_val = processed.fetch_add(1, Ordering::Relaxed) + 1;
-            log_fetch_progress(processed_val, total_symbols);
+            processed += 1;
+            log_fetch_progress(processed, total_symbols);
         }
 
-        let failed = failed_count.load(Ordering::Relaxed);
-        let success = results.lock().await.len();
-        log_fetch_summary(success, failed, total_symbols);
+        let success = results.len();
+        log_fetch_summary(success, failed_count, total_symbols);
 
-        let final_results = Arc::try_unwrap(results)
-            .expect("results Arc should have single owner after channel drain")
-            .into_inner();
-
-        Ok(final_results)
+        Ok(results)
     }
 
     fn extract_open_prices_from_tickers(&self, tickers: &[Ticker]) -> Vec<(String, f64)> {
