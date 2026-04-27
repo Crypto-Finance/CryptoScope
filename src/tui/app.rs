@@ -11,7 +11,10 @@ use std::cmp::Ordering;
 
 /// Check if a single symbol matches the search term (case-insensitive).
 fn symbol_matches_search(symbol: &Symbol, search: &str) -> bool {
-    symbol.symbol.to_lowercase().contains(&search.to_lowercase())
+    symbol
+        .symbol
+        .to_lowercase()
+        .contains(&search.to_lowercase())
 }
 
 /// Direction for scroll/selection navigation.
@@ -292,7 +295,10 @@ impl AppState {
     /// Return mutable references to the active view's (search, search_mode) pair.
     fn active_search_mut(&mut self) -> Option<(&mut String, &mut bool)> {
         match self.view {
-            AppView::SymbolList => Some((&mut self.symbol_list.search, &mut self.symbol_list.search_mode)),
+            AppView::SymbolList => Some((
+                &mut self.symbol_list.search,
+                &mut self.symbol_list.search_mode,
+            )),
             AppView::Screener => Some((&mut self.screener.search, &mut self.screener.search_mode)),
             AppView::StatsDashboard => None,
         }
@@ -398,7 +404,10 @@ impl AppState {
         self.screener.results = results;
         self.apply_screener_filters();
         self.screener.loading = false;
-        adjust_selection(&mut self.screener.table_state, self.screener.filtered_indices.len());
+        adjust_selection(
+            &mut self.screener.table_state,
+            self.screener.filtered_indices.len(),
+        );
         true
     }
 
@@ -464,14 +473,12 @@ impl AppState {
 
     /// Format contract types for display, or None if all/none selected.
     pub fn contract_types_display(&self, formatter: fn(&ContractType) -> &str) -> Option<String> {
-        self.contract_types_labels(formatter).map(|labels| labels.join(", "))
+        self.contract_types_labels(formatter)
+            .map(|labels| labels.join(", "))
     }
 
     /// Return contract type labels for custom formatting, or None if all/none selected.
-    pub fn contract_types_labels(
-        &self,
-        formatter: fn(&ContractType) -> &str,
-    ) -> Option<Vec<&str>> {
+    pub fn contract_types_labels(&self, formatter: fn(&ContractType) -> &str) -> Option<Vec<&str>> {
         if !self.is_contract_filter_active() {
             return None;
         }
@@ -529,9 +536,27 @@ mod tests {
     fn make_screener_test_state() -> AppState {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("ETHUSDT", "linear", ContractType::LinearPerpetual, 5.0, 200.0),
-            make_price_change("SOLUSDT", "linear", ContractType::LinearPerpetual, -2.0, 150.0),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "ETHUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                5.0,
+                200.0,
+            ),
+            make_price_change(
+                "SOLUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                -2.0,
+                150.0,
+            ),
         ];
         state
     }
@@ -572,9 +597,27 @@ mod tests {
     fn test_sort_volume_descending() {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("ETHUSDT", "linear", ContractType::LinearPerpetual, 5.0, 500.0),
-            make_price_change("SOLUSDT", "linear", ContractType::LinearPerpetual, -2.0, 300.0),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "ETHUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                5.0,
+                500.0,
+            ),
+            make_price_change(
+                "SOLUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                -2.0,
+                300.0,
+            ),
         ];
         state.screener.sort = ScreenerSort::Volume;
         state.screener.sort_desc = true;
@@ -593,9 +636,27 @@ mod tests {
     fn test_sort_symbol_ascending() {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("SOLUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 5.0, 200.0),
-            make_price_change("ETHUSDT", "linear", ContractType::LinearPerpetual, -2.0, 150.0),
+            make_price_change(
+                "SOLUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                5.0,
+                200.0,
+            ),
+            make_price_change(
+                "ETHUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                -2.0,
+                150.0,
+            ),
         ];
         state.screener.sort = ScreenerSort::Symbol;
         state.screener.sort_desc = false;
@@ -614,9 +675,27 @@ mod tests {
     fn test_filter_by_min_change() {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("ETHUSDT", "linear", ContractType::LinearPerpetual, 5.0, 200.0),
-            make_price_change("SOLUSDT", "linear", ContractType::LinearPerpetual, 0.3, 150.0),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "ETHUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                5.0,
+                200.0,
+            ),
+            make_price_change(
+                "SOLUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                0.3,
+                150.0,
+            ),
         ];
         state.screener.min_change = 2.0;
         state.apply_screener_filters();
@@ -645,19 +724,39 @@ mod tests {
     fn test_filter_by_contract_type_linear_perp_only() {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("ETHUSD", "inverse", ContractType::InversePerpetual, 5.0, 200.0),
-            make_price_change("SOLUSDT", "linear", ContractType::LinearPerpetual, -2.0, 150.0),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "ETHUSD",
+                "inverse",
+                ContractType::InversePerpetual,
+                5.0,
+                200.0,
+            ),
+            make_price_change(
+                "SOLUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                -2.0,
+                150.0,
+            ),
         ];
         state.contract_types = vec![ContractType::LinearPerpetual];
         state.apply_screener_filters();
 
         assert_eq!(state.screener.filtered_len(), 2);
-        assert!(state
-            .screener
-            .filtered_indices
-            .iter()
-            .all(|&i| state.screener.results[i].contract_type == ContractType::LinearPerpetual));
+        assert!(
+            state
+                .screener
+                .filtered_indices
+                .iter()
+                .all(|&i| state.screener.results[i].contract_type == ContractType::LinearPerpetual)
+        );
     }
 
     #[test]
@@ -677,8 +776,20 @@ mod tests {
     fn test_selection_none_when_all_filtered_out() {
         let mut state = AppState::new("bybit".into(), vec![]);
         state.screener.results = vec![
-            make_price_change("BTCUSDT", "linear", ContractType::LinearPerpetual, 1.0, 100.0),
-            make_price_change("ETHUSDT", "linear", ContractType::LinearPerpetual, 5.0, 200.0),
+            make_price_change(
+                "BTCUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                1.0,
+                100.0,
+            ),
+            make_price_change(
+                "ETHUSDT",
+                "linear",
+                ContractType::LinearPerpetual,
+                5.0,
+                200.0,
+            ),
         ];
         state.screener.table_state.select(Some(0));
         // Filter out everything

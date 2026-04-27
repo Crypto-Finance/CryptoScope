@@ -1,5 +1,5 @@
-use crate::models::response::TickerRawResponse;
 use crate::models::ContractType;
+use crate::models::response::TickerRawResponse;
 use crate::utils::parse_f64_or_zero;
 
 /// Ticker from /v5/market/tickers endpoint

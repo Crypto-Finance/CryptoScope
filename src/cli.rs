@@ -221,7 +221,10 @@ mod tests {
         let cli = Cli::parse_from(["cryptoscope", "--cli", "--category", "linear"]);
         assert!(cli.cli);
         assert_eq!(cli.common.category, "linear");
-        assert_eq!(parse_categories(&cli.common.category).unwrap(), vec!["linear"]);
+        assert_eq!(
+            parse_categories(&cli.common.category).unwrap(),
+            vec!["linear"]
+        );
         assert_eq!(cli.get_output_mode(), OutputMode::Text);
     }
 

@@ -45,8 +45,7 @@ pub fn render(
                 Cell::from(format_price(pc.open_price)),
                 Cell::from(format_price(pc.current_price)),
                 Cell::from(pc.change_percent_formatted()).style(
-                    ratatui::style::Style::default()
-                        .fg(theme::change_color(pc.change_percent)),
+                    ratatui::style::Style::default().fg(theme::change_color(pc.change_percent)),
                 ),
                 Cell::from(format_volume(pc.volume_usdt())),
             ];

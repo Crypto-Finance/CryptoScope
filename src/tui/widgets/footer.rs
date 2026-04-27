@@ -20,7 +20,10 @@ fn loading_indicator(state: &AppState) -> Option<Span<'static>> {
 
 fn search_indicator_span(mode: bool, search: &str) -> Option<Span<'_>> {
     if mode {
-        Some(Span::styled(format!("  /{} ", search), theme::footer_style()))
+        Some(Span::styled(
+            format!("  /{} ", search),
+            theme::footer_style(),
+        ))
     } else {
         None
     }

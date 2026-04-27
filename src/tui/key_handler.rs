@@ -15,10 +15,7 @@ pub enum NavResult {
 }
 
 /// Handle a key press event. Returns `NavResult` indicating what the caller should do.
-pub fn handle_key_event(
-    app_state: &mut AppState,
-    key: KeyEvent,
-) -> NavResult {
+pub fn handle_key_event(app_state: &mut AppState, key: KeyEvent) -> NavResult {
     if app_state.is_search_mode() {
         handle_search_input(app_state, key);
         return NavResult::Consumed;

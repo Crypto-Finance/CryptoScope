@@ -199,7 +199,12 @@ fn print_header(col_widths: &[usize; 6]) {
 fn print_separator(col_widths: &[usize; 6]) {
     println!(
         "{:-<w1$}-+-{:-<w2$}-+-{:-<w3$}-+-{:-<w4$}-+-{:-<w5$}-+-{:-<w6$}",
-        "", "", "", "", "", "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
         w1 = col_widths[0],
         w2 = col_widths[1],
         w3 = col_widths[2],

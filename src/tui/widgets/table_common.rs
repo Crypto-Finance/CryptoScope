@@ -4,7 +4,7 @@ use crate::tui::theme;
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
-use ratatui::widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState, TableState, Table};
+use ratatui::widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState};
 
 /// Helper: scroll selection with wrap-around.
 pub fn scroll_select(state: &mut TableState, count: usize, direction: Direction) {
@@ -87,12 +87,7 @@ pub fn add_scrollbar_click_regions(click_regions: &mut ClickRegions, scrollbar_a
 /// * `scrollbar_area` - The area reserved for the scrollbar
 /// * `total_rows` - Total number of data rows in the table
 /// * `offset` - Current scroll offset (first visible row index)
-pub fn render_scrollbar(
-    frame: &mut Frame,
-    scrollbar_area: Rect,
-    total_rows: usize,
-    offset: usize,
-) {
+pub fn render_scrollbar(frame: &mut Frame, scrollbar_area: Rect, total_rows: usize, offset: usize) {
     if scrollbar_area.is_empty() {
         return;
     }
@@ -132,10 +127,7 @@ pub fn add_row_click_regions(
     let visible_rows = content_area.height.saturating_sub(2) as usize;
     let content_start_y = content_area.y.saturating_add(1);
 
-    for (visible_idx, symbol_idx) in (offset..filtered_len)
-        .take(visible_rows)
-        .enumerate()
-    {
+    for (visible_idx, symbol_idx) in (offset..filtered_len).take(visible_rows).enumerate() {
         let row_y = content_start_y
             .saturating_add(1)
             .saturating_add(visible_idx as u16);

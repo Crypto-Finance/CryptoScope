@@ -19,28 +19,30 @@ pub fn render(frame: &mut Frame, area: Rect, state: &AppState, _click_regions: &
     )]);
 
     // Show contract type filter if active
-    let contract_line = state.contract_types_display(|ct| ct.display_name()).map(|types| {
-        Line::from(vec![Span::styled(
-            format!("└─ Contract Types: {types}"),
-            Style::default().fg(theme::TAG),
-        )])
-    });
+    let contract_line = state
+        .contract_types_display(|ct| ct.display_name())
+        .map(|types| {
+            Line::from(vec![Span::styled(
+                format!("└─ Contract Types: {types}"),
+                Style::default().fg(theme::TAG),
+            )])
+        });
 
     // Show screener count info when in Screener view
-    let is_screener_view =
-        state.view == AppView::Screener && state.screener.total_count > 0;
+    let is_screener_view = state.view == AppView::Screener && state.screener.total_count > 0;
     let screener_line = is_screener_view.then(|| {
         let filtered = state.screener.filtered_len();
         let total = state.screener.total_count;
         let text = if filtered == total {
             format!(" Screener: {total} symbols")
         } else {
-            format!(" Screener: {filtered}/{total} ({}/{} filtered)", total - filtered, total)
+            format!(
+                " Screener: {filtered}/{total} ({}/{} filtered)",
+                total - filtered,
+                total
+            )
         };
-        Line::from(vec![Span::styled(
-            text,
-            Style::default().fg(theme::TAG),
-        )])
+        Line::from(vec![Span::styled(text, Style::default().fg(theme::TAG))])
     });
 
     let block = Block::default()

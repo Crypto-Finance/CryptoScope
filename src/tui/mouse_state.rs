@@ -54,7 +54,11 @@ impl MouseState {
         symbol: TableContext<'_>,
         direction: Direction,
     ) {
-        let ctx = if matches!(view, AppView::Screener) { screener } else { symbol };
+        let ctx = if matches!(view, AppView::Screener) {
+            screener
+        } else {
+            symbol
+        };
         scroll_select(ctx.state, ctx.filtered_len, direction);
     }
 
@@ -87,11 +91,7 @@ impl MouseState {
                         *direction,
                     );
                 } else {
-                    Self::on_scrollbar_track_click(
-                        symbol.state,
-                        symbol.filtered_len,
-                        *direction,
-                    );
+                    Self::on_scrollbar_track_click(symbol.state, symbol.filtered_len, *direction);
                 }
             }
         }

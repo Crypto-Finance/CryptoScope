@@ -17,11 +17,7 @@ pub const PRICE_DOWN: Color = Color::Rgb(255, 80, 80);
 
 /// Get color for price change percentage
 pub fn change_color(percent: f64) -> Color {
-    if percent >= 0.0 {
-        PRICE_UP
-    } else {
-        PRICE_DOWN
-    }
+    if percent >= 0.0 { PRICE_UP } else { PRICE_DOWN }
 }
 
 /// Create a styled block with the cyberdeck theme.

@@ -78,9 +78,8 @@ impl TuiLifecycle {
 
         let cat_strings: Vec<String> = categories.iter().map(ToString::to_string).collect();
         let parsed_contract_types = parse_contract_types(contract_types);
-        let state = create_state_with_fetches(
-            exchange_name, &cat_strings, parsed_contract_types, mode,
-        );
+        let state =
+            create_state_with_fetches(exchange_name, &cat_strings, parsed_contract_types, mode);
 
         Ok(Self {
             terminal,
@@ -124,7 +123,10 @@ fn parse_contract_types(contract_types: &[String]) -> Vec<ContractType> {
         .map(|s| {
             let parsed = ContractType::from_str(s);
             if matches!(parsed, ContractType::Unknown) {
-                tracing::warn!("Unknown contract type from CLI: '{}', treating as Unknown", s);
+                tracing::warn!(
+                    "Unknown contract type from CLI: '{}', treating as Unknown",
+                    s
+                );
             }
             parsed
         })
@@ -146,14 +148,14 @@ fn create_state_with_fetches(
     )));
     let exchange = exchange_name.to_string();
     let cats = categories.to_vec();
-    spawn_fetch_task(&state, exchange.clone(), cats.clone(), FetchKind::Symbols, false);
     spawn_fetch_task(
         &state,
-        exchange,
-        cats,
-        FetchKind::Screener(mode),
+        exchange.clone(),
+        cats.clone(),
+        FetchKind::Symbols,
         false,
     );
+    spawn_fetch_task(&state, exchange, cats, FetchKind::Screener(mode), false);
     state
 }
 
@@ -218,7 +220,7 @@ async fn poll_and_dispatch(
     // user an intuitive "tap anywhere to dismiss" experience.
     if app_state.popup.message.is_some() {
         app_state.dismiss_popup();
-        return Ok(false);  // Dismiss popup, consume ALL events
+        return Ok(false); // Dismiss popup, consume ALL events
     }
 
     match event {
@@ -345,11 +347,7 @@ async fn show_error_popup(state: &AppStateRef, message: String) {
 }
 
 /// Show an error popup only if generation still matches.
-async fn show_error_popup_if_current(
-    state: &AppStateRef,
-    generation: u64,
-    message: String,
-) {
+async fn show_error_popup_if_current(state: &AppStateRef, generation: u64, message: String) {
     let mut s = state.write().await;
     if s.screener.generation == generation {
         s.screener.loading = false;
@@ -357,21 +355,14 @@ async fn show_error_popup_if_current(
     }
 }
 
-async fn do_fetch(
-    state: AppStateRef,
-    exchange: &str,
-    categories: &[String],
-    is_refresh: bool,
-) {
+async fn do_fetch(state: AppStateRef, exchange: &str, categories: &[String], is_refresh: bool) {
     let cat_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
 
     match create_exchange(exchange) {
-        Ok(exchange_client) => {
-            match fetch_categories(&*exchange_client, &cat_refs).await {
-                Ok(symbols) => handle_fetch_success(&state, symbols, is_refresh).await,
-                Err(e) => handle_fetch_error(&state, e.into(), is_refresh).await,
-            }
-        }
+        Ok(exchange_client) => match fetch_categories(&*exchange_client, &cat_refs).await {
+            Ok(symbols) => handle_fetch_success(&state, symbols, is_refresh).await,
+            Err(e) => handle_fetch_error(&state, e.into(), is_refresh).await,
+        },
         Err(e) => {
             show_error_popup(&state, format!("Exchange error: {e}")).await;
         }
@@ -397,7 +388,11 @@ async fn apply_screener_results(
             }
         }
         Err(e) => {
-            let prefix = if is_refresh { "Screener refresh" } else { "Screener" };
+            let prefix = if is_refresh {
+                "Screener refresh"
+            } else {
+                "Screener"
+            };
             show_error_popup_if_current(state, generation, format!("{prefix} failed: {e}")).await;
         }
     }

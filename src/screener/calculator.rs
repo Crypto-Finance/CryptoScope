@@ -14,14 +14,13 @@ pub fn calculate_all(
         .into_iter()
         .filter_map(|ticker| {
             // Try DB open price first, fall back to prev_price_24h
-            let open_price = open_price_map
-                .get(ticker.symbol.as_str())
-                .copied()
-                .or(if ticker.prev_price_24h > 0.0 {
+            let open_price = open_price_map.get(ticker.symbol.as_str()).copied().or(
+                if ticker.prev_price_24h > 0.0 {
                     Some(ticker.prev_price_24h)
                 } else {
                     None
-                })?;
+                },
+            )?;
 
             let change_value = ticker.last_price - open_price;
             let change_percent = if open_price != 0.0 {
@@ -140,8 +139,7 @@ mod tests {
         let results = calculate_all(vec![], vec![]);
         assert!(results.is_empty());
 
-        let results =
-            calculate_all(vec![("BTCUSDT".to_string(), 50000.0)], vec![]);
+        let results = calculate_all(vec![("BTCUSDT".to_string(), 50000.0)], vec![]);
         assert!(results.is_empty());
 
         let tickers = vec![create_test_ticker("BTCUSDT", 51000.0, 1000.0)];
@@ -203,6 +201,4 @@ mod tests {
 
         assert!(results.is_empty());
     }
-
-
 }
