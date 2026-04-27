@@ -18,13 +18,25 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::info;
 
-use cli::{Cli, Commands, OutputMode, parse_categories_from};
+use cli::{Cli, Commands, OutputMode, ScreenerMode, parse_categories};
 use db::{Database, create_connection, init_schema};
 use exchange::create_exchange;
 use fetcher::fetch_categories;
-use models::{Statistics, Symbol};
+use models::{PriceChange, Statistics, Symbol};
 use output::{apply_filter, format_text, print_json};
 use screener::{Screener, display_output, display_output_stats};
+
+/// Print screener results and stats to stdout.
+fn print_screener_output(
+    changes: &[PriceChange],
+    top: Option<usize>,
+    min_change: Option<f64>,
+    min_volume: Option<f64>,
+    symbol: Option<&str>,
+) {
+    display_output(changes, top, min_change, min_volume, symbol);
+    display_output_stats(changes);
+}
 
 async fn run_screener(cmd: &cli::ScreenerCmd) -> Result<()> {
     let conn = create_connection()?;
@@ -34,7 +46,7 @@ async fn run_screener(cmd: &cli::ScreenerCmd) -> Result<()> {
     let exchange = create_exchange(&cmd.common.exchange)?;
     info!("Created exchange client: {}", exchange.name());
 
-    let categories: Vec<String> = parse_categories_from(&cmd.common)?
+    let categories: Vec<String> = parse_categories(&cmd.common.category)?
         .into_iter()
         .map(|s| s.to_string())
         .collect();
@@ -48,14 +60,13 @@ async fn run_screener(cmd: &cli::ScreenerCmd) -> Result<()> {
     let mut screener = Screener::new(db, Arc::from(exchange), cmd.mode, categories);
     let changes = screener.run().await?;
 
-    display_output(
+    print_screener_output(
         &changes,
         cmd.top,
         cmd.min_change,
         cmd.min_volume,
         cmd.symbol.as_deref(),
     );
-    display_output_stats(&changes);
 
     // Hint for cache refresh
     println!();
@@ -69,7 +80,7 @@ async fn fetch_and_filter(cli: &Cli) -> Result<(Vec<Symbol>, Statistics, Vec<&'s
     let exchange = create_exchange(&cli.common.exchange)?;
     info!("Created exchange client: {}", exchange.name());
 
-    let categories = parse_categories_from(&cli.common)?;
+    let categories = parse_categories(&cli.common.category)?;
     info!("Fetching categories: {:?}", categories);
 
     let all_symbols = fetch_categories(&*exchange, &categories).await?;
@@ -97,12 +108,24 @@ async fn compute_and_display(
     categories: &[&'static str],
     elapsed: std::time::Duration,
 ) -> Result<()> {
+    // Extract screener mode from CLI if available, default to Kline
+    let screener_mode = match &cli.command {
+        Some(Commands::Screener(cmd)) => cmd.mode,
+        None => ScreenerMode::default(),
+    };
+
     match cli.get_output_mode() {
         OutputMode::Json => {
             print_json(&cli.common.exchange, categories, symbols, stats)?;
         }
         OutputMode::Tui => {
-            tui::run(&cli.common.exchange, categories).await?;
+            tui::run(
+                &cli.common.exchange,
+                categories,
+                &cli.common.contract_type,
+                screener_mode,
+            )
+            .await?;
         }
         OutputMode::Text => {
             format_text(&cli.common.exchange, categories, symbols, stats);
@@ -122,7 +145,7 @@ async fn dispatch_command(cli: &Cli) -> Result<()> {
     info!(
         "Exchange: {}, Category: {:?}, Output: {:?}",
         cli.common.exchange,
-        parse_categories_from(&cli.common)?,
+        parse_categories(&cli.common.category)?,
         cli.get_output_mode()
     );
 

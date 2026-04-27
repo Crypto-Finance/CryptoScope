@@ -31,9 +31,11 @@ pub(crate) fn parse_categories(
 
 /// Parse a non-negative f64 value for clap argument validation.
 fn parse_non_negative_f64(s: &str) -> Result<f64, String> {
-    let v: f64 = s.parse().map_err(|e| format!("Invalid number: {e}"))?;
-    if v < 0.0 {
-        Err(format!("Value must be non-negative, got {v}"))
+    let v: f64 = s.parse().map_err(|e| format!("invalid number: {e}"))?;
+    if !v.is_finite() {
+        Err("must be a finite number".into())
+    } else if v < 0.0 {
+        Err("must be non-negative".into())
     } else {
         Ok(v)
     }
@@ -58,13 +60,11 @@ pub struct CommonArgs {
     /// Default: all - shows both linear and inverse perpetual prices
     #[arg(short = 'c', long, default_value = "all")]
     pub category: String,
-}
 
-/// Parse categories from shared CLI arguments.
-pub fn parse_categories_from(
-    common: &CommonArgs,
-) -> Result<Vec<&'static str>, crate::error::CryptoScopeError> {
-    parse_categories(&common.category)
+    /// Filter by contract type (repeatable: LinearPerpetual, LinearFutures,
+    /// InversePerpetual, InverseFutures)
+    #[arg(long = "contract-type", value_name = "TYPE")]
+    pub contract_type: Vec<String>,
 }
 
 /// Screener subcommand for price screening
@@ -165,16 +165,16 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_categories_from() {
+    fn test_parse_categories_from_common_args() {
         let cli_all = Cli::parse_from(["cryptoscope", "--category", "all"]);
         assert_eq!(
-            parse_categories_from(&cli_all.common).unwrap(),
+            parse_categories(&cli_all.common.category).unwrap(),
             vec!["linear", "inverse"]
         );
 
         let cli_linear = Cli::parse_from(["cryptoscope", "--category", "linear"]);
         assert_eq!(
-            parse_categories_from(&cli_linear.common).unwrap(),
+            parse_categories(&cli_linear.common.category).unwrap(),
             vec!["linear"]
         );
     }
@@ -221,7 +221,10 @@ mod tests {
         let cli = Cli::parse_from(["cryptoscope", "--cli", "--category", "linear"]);
         assert!(cli.cli);
         assert_eq!(cli.common.category, "linear");
-        assert_eq!(parse_categories_from(&cli.common).unwrap(), vec!["linear"]);
+        assert_eq!(
+            parse_categories(&cli.common.category).unwrap(),
+            vec!["linear"]
+        );
         assert_eq!(cli.get_output_mode(), OutputMode::Text);
     }
 
@@ -268,21 +271,15 @@ mod tests {
 
     #[test]
     fn test_parse_non_negative_f64_nan() {
-        // NaN parses as f64::NAN but is not < 0.0, so it passes the check.
-        // This is acceptable — NaN is a valid f64 value for filtering purposes.
-        let result = parse_non_negative_f64("NaN");
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_nan());
+        // NaN is now rejected
+        assert!(parse_non_negative_f64("NaN").is_err());
     }
 
     #[test]
     fn test_parse_non_negative_f64_infinity() {
-        let result = parse_non_negative_f64("inf");
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_infinite());
-
-        let result_neg = parse_non_negative_f64("-inf");
-        assert!(result_neg.is_err());
+        // Infinity is now rejected
+        assert!(parse_non_negative_f64("inf").is_err());
+        assert!(parse_non_negative_f64("-inf").is_err());
     }
 
     #[test]
@@ -300,10 +297,9 @@ mod tests {
         assert!(result.is_ok());
         assert!(result.unwrap().is_finite());
 
-        // A value larger than f64::MAX overflows to infinity
+        // A value larger than f64::MAX overflows to infinity, now rejected
         let result = parse_non_negative_f64("1e309");
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_infinite());
+        assert!(result.is_err());
     }
 
     #[test]

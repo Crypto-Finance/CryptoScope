@@ -1,9 +1,13 @@
+use crate::cli::ScreenerMode;
 use crate::exchange::create_exchange;
 use crate::fetcher::fetch_categories;
 use crate::logging;
-use crate::tui::app::AppState;
+use crate::models::ContractType;
+use crate::models::symbol::Symbol;
+use crate::tui::app::{AppState, AppView, Direction};
+use crate::tui::screener_service::fetch_screener_data_blocking;
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{self, Event, KeyEventKind};
 use crossterm::event::{MouseEvent, MouseEventKind};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -12,7 +16,11 @@ use std::io;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::timeout;
 use tracing::info;
+
+const SCREENER_TIMEOUT_SECS: u64 = 30;
+const SCREENER_TIMEOUT_MSG: &str = "Screener fetch timed out after 30s";
 
 type AppTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 type AppStateRef = Arc<RwLock<AppState>>;
@@ -40,7 +48,6 @@ impl Drop for LogGuard {
 struct TuiLifecycle {
     terminal: AppTerminal,
     state: AppStateRef,
-    raw_mode_enabled: bool,
     _log_guard: LogGuard,
 }
 
@@ -49,7 +56,12 @@ impl TuiLifecycle {
     ///
     /// Enables raw mode, enters alternate screen, enables mouse capture,
     /// and suppresses logs via `LogGuard`.
-    fn init(exchange_name: &str, categories: &[&str]) -> Result<Self> {
+    fn init(
+        exchange_name: &str,
+        categories: &[&str],
+        contract_types: &[String],
+        mode: ScreenerMode,
+    ) -> Result<Self> {
         let _log_guard = LogGuard::new();
 
         crossterm::terminal::enable_raw_mode()?;
@@ -60,40 +72,20 @@ impl TuiLifecycle {
             crossterm::event::EnableMouseCapture
         )?;
 
-        let backend = CrosstermBackend::new(io::stdout());
+        let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
         terminal.clear()?;
 
         let cat_strings: Vec<String> = categories.iter().map(ToString::to_string).collect();
-
-        let state = Arc::new(RwLock::new(AppState::new(
-            exchange_name.to_string(),
-            cat_strings.clone(),
-        )));
-
-        // Spawn initial data fetch
-        spawn_fetch(&state, exchange_name, &cat_strings);
+        let parsed_contract_types = parse_contract_types(contract_types);
+        let state =
+            create_state_with_fetches(exchange_name, &cat_strings, parsed_contract_types, mode);
 
         Ok(Self {
             terminal,
             state,
-            raw_mode_enabled: true,
             _log_guard,
         })
-    }
-
-    /// Restore terminal state. Logs are restored by `LogGuard::drop`.
-    fn restore(&mut self) -> Result<()> {
-        if self.raw_mode_enabled {
-            self.raw_mode_enabled = false;
-            crossterm::terminal::disable_raw_mode()?;
-            crossterm::execute!(
-                io::stdout(),
-                crossterm::terminal::LeaveAlternateScreen,
-                crossterm::event::DisableMouseCapture
-            )?;
-        }
-        Ok(())
     }
 
     fn terminal(&mut self) -> &mut AppTerminal {
@@ -105,15 +97,76 @@ impl TuiLifecycle {
     }
 }
 
+/// Restore terminal state. Logs are restored by `LogGuard::drop`.
+///
+/// `disable_raw_mode` is idempotent, so this can run unconditionally.
+fn restore_terminal() -> Result<()> {
+    crossterm::terminal::disable_raw_mode()?;
+    crossterm::execute!(
+        io::stdout(),
+        crossterm::terminal::LeaveAlternateScreen,
+        crossterm::event::DisableMouseCapture
+    )?;
+    Ok(())
+}
+
 impl Drop for TuiLifecycle {
     fn drop(&mut self) {
-        let _ = self.restore();
+        let _ = restore_terminal();
     }
 }
 
-/// Run the TUI application with the given exchange and categories.
-pub async fn run(exchange_name: &str, categories: &[&str]) -> Result<()> {
-    let mut lifecycle = TuiLifecycle::init(exchange_name, categories)?;
+/// Parse contract types from CLI strings, logging warnings for unknown types.
+fn parse_contract_types(contract_types: &[String]) -> Vec<ContractType> {
+    contract_types
+        .iter()
+        .map(|s| {
+            let parsed = ContractType::from_str(s);
+            if matches!(parsed, ContractType::Unknown) {
+                tracing::warn!(
+                    "Unknown contract type from CLI: '{}', treating as Unknown",
+                    s
+                );
+            }
+            parsed
+        })
+        .collect()
+}
+
+/// Create app state and spawn initial data fetches.
+fn create_state_with_fetches(
+    exchange_name: &str,
+    categories: &[String],
+    parsed_contract_types: Vec<ContractType>,
+    mode: ScreenerMode,
+) -> AppStateRef {
+    let state = Arc::new(RwLock::new(AppState::new_with_contract_types(
+        exchange_name.to_string(),
+        categories.to_vec(),
+        parsed_contract_types,
+        mode,
+    )));
+    let exchange = exchange_name.to_string();
+    let cats = categories.to_vec();
+    spawn_fetch_task(
+        &state,
+        exchange.clone(),
+        cats.clone(),
+        FetchKind::Symbols,
+        false,
+    );
+    spawn_fetch_task(&state, exchange, cats, FetchKind::Screener(mode), false);
+    state
+}
+
+/// Run the TUI application with the given exchange, categories, contract types, and screener mode.
+pub async fn run(
+    exchange_name: &str,
+    categories: &[&str],
+    contract_types: &[String],
+    mode: ScreenerMode,
+) -> Result<()> {
+    let mut lifecycle = TuiLifecycle::init(exchange_name, categories, contract_types, mode)?;
 
     let state = lifecycle.state().clone();
     event_loop(lifecycle.terminal(), &state).await?;
@@ -158,12 +211,16 @@ async fn poll_and_dispatch(
     let event = event::read()?;
     let mut app_state = state.write().await;
 
-    // Handle popup dismissal first (for any event)
-    if app_state.popup_message.is_some() {
+    // Handle popup dismissal first (for any event).
+    // ALL events are consumed here — not just key presses — because a popup
+    // represents a transient overlay that blocks interaction with the
+    // underlying UI. If we forwarded the event (e.g., a mouse click on a
+    // table row), the user would accidentally trigger an action they didn't
+    // intend while the popup was visible. Dismissing on any event gives the
+    // user an intuitive "tap anywhere to dismiss" experience.
+    if app_state.popup.message.is_some() {
         app_state.dismiss_popup();
-        if let Event::Key(_) = event {
-            return Ok(false);
-        }
+        return Ok(false); // Dismiss popup, consume ALL events
     }
 
     match event {
@@ -171,7 +228,15 @@ async fn poll_and_dispatch(
             if key.kind != KeyEventKind::Press {
                 return Ok(false);
             }
-            Ok(handle_key_event(&mut app_state, key, state))
+            match crate::tui::key_handler::handle_key_event(&mut app_state, key) {
+                crate::tui::key_handler::NavResult::Quit => Ok(true),
+                crate::tui::key_handler::NavResult::Refresh => {
+                    handle_refresh(&mut app_state, state);
+                    Ok(false)
+                }
+                crate::tui::key_handler::NavResult::Consumed
+                | crate::tui::key_handler::NavResult::Ignored => Ok(false),
+            }
         }
         Event::Mouse(mouse) => {
             handle_mouse_event(&mut app_state, mouse, click_regions);
@@ -181,60 +246,28 @@ async fn poll_and_dispatch(
     }
 }
 
-/// Handle a key press event. Returns `true` if the app should quit.
-fn handle_key_event(app_state: &mut AppState, key: KeyEvent, state: &AppStateRef) -> bool {
-    if app_state.search_mode {
-        handle_search_input(app_state, key);
-        return false;
+/// Handle refresh key: spawn appropriate fetch task for current view.
+fn handle_refresh(app_state: &mut AppState, state: &AppStateRef) {
+    if app_state.view == AppView::Screener {
+        app_state.screener.loading = true;
+        spawn_fetch_task(
+            state,
+            app_state.exchange_name.clone(),
+            app_state.categories.clone(),
+            FetchKind::Screener(app_state.screener_mode),
+            true,
+        );
+    } else {
+        app_state.loading = true;
+        spawn_fetch_task(
+            state,
+            app_state.exchange_name.clone(),
+            app_state.categories.clone(),
+            FetchKind::Symbols,
+            true,
+        );
     }
-    handle_normal_keys(app_state, key, state)
-}
-
-/// Handle key input while in search mode.
-fn handle_search_input(app_state: &mut AppState, key: KeyEvent) {
-    match key.code {
-        KeyCode::Esc | KeyCode::Enter => {
-            app_state.search_mode = false;
-            app_state.apply_filters();
-        }
-        KeyCode::Char(c) => {
-            app_state.add_search_char(c);
-        }
-        KeyCode::Backspace => {
-            app_state.remove_search_char();
-        }
-        _ => {}
-    }
-}
-
-/// Handle key input in normal mode. Returns `true` if the app should quit.
-fn handle_normal_keys(app_state: &mut AppState, key: KeyEvent, state: &AppStateRef) -> bool {
-    match key.code {
-        KeyCode::Char('q') | KeyCode::Esc => true,
-        KeyCode::Down | KeyCode::Char('j') => {
-            app_state.select_next();
-            false
-        }
-        KeyCode::Up | KeyCode::Char('k') => {
-            app_state.select_prev();
-            false
-        }
-        KeyCode::Char('/') => {
-            app_state.toggle_search_mode();
-            false
-        }
-        KeyCode::Tab => {
-            app_state.toggle_view();
-            false
-        }
-        KeyCode::Char('r') => {
-            app_state.loading = true;
-            app_state.dismiss_popup();
-            spawn_refresh(state, app_state);
-            false
-        }
-        _ => false,
-    }
+    app_state.dismiss_popup();
 }
 
 /// Handle a mouse event by hit-testing against click regions.
@@ -245,10 +278,10 @@ fn handle_mouse_event(
 ) {
     match mouse.kind {
         MouseEventKind::ScrollDown => {
-            app_state.on_scroll_down();
+            app_state.scroll_view(Direction::Next);
         }
         MouseEventKind::ScrollUp => {
-            app_state.on_scroll_up();
+            app_state.scroll_view(Direction::Previous);
         }
         MouseEventKind::Down(_) => {
             if let Some(action) = click_regions.hit_test(mouse.column, mouse.row) {
@@ -259,59 +292,159 @@ fn handle_mouse_event(
     }
 }
 
+/// Which kind of fetch to perform (symbol list vs screener).
+enum FetchKind {
+    Symbols,
+    Screener(ScreenerMode),
+}
+
+/// Unified spawn function for all fetch/refresh tasks.
 fn spawn_fetch_task(
-    state: &Arc<RwLock<AppState>>,
-    exchange_name: &str,
-    categories: &[String],
+    state: &AppStateRef,
+    exchange: String,
+    categories: Vec<String>,
+    kind: FetchKind,
     is_refresh: bool,
 ) {
     let state_clone = state.clone();
-    let exchange = exchange_name.to_string();
-    let cats = categories.to_vec();
 
     tokio::spawn(async move {
-        info!("Starting async fetch for exchange: {}", exchange);
-        do_fetch(state_clone, &exchange, &cats, is_refresh).await;
+        let action = if is_refresh { "refresh" } else { "fetch" };
+        let label = &exchange;
+        info!("Starting async {action} for exchange: {label}");
+
+        match kind {
+            FetchKind::Symbols => {
+                do_fetch(state_clone, &exchange, &categories, is_refresh).await;
+            }
+            FetchKind::Screener(mode) => {
+                do_screener_fetch(state_clone, exchange, categories, mode, is_refresh).await;
+            }
+        }
     });
 }
 
-fn spawn_fetch(state: &Arc<RwLock<AppState>>, exchange_name: &str, categories: &[String]) {
-    spawn_fetch_task(state, exchange_name, categories, false);
+/// Handle successful symbol fetch: update state and optionally show popup.
+async fn handle_fetch_success(state: &AppStateRef, symbols: Vec<Symbol>, is_refresh: bool) {
+    info!("Fetched {} symbols", symbols.len());
+    let mut s = state.write().await;
+    s.set_symbols(symbols);
+    if is_refresh {
+        s.show_popup("Refresh complete".to_string(), false);
+    }
 }
 
-fn spawn_refresh(state: &Arc<RwLock<AppState>>, app_state: &AppState) {
-    let exchange_name = app_state.exchange_name.clone();
-    let categories = app_state.categories.clone();
-    spawn_fetch_task(state, &exchange_name, &categories, true);
+/// Handle fetch error: show error popup with appropriate prefix.
+async fn handle_fetch_error(state: &AppStateRef, error: anyhow::Error, is_refresh: bool) {
+    let mut s = state.write().await;
+    let prefix = if is_refresh { "Refresh" } else { "Fetch" };
+    s.show_popup(format!("{prefix} failed: {error}"), true);
 }
 
-async fn do_fetch(
-    state: Arc<RwLock<AppState>>,
-    exchange: &str,
-    categories: &[String],
-    is_refresh: bool,
-) {
+/// Show an error popup after acquiring write lock.
+async fn show_error_popup(state: &AppStateRef, message: String) {
+    state.write().await.show_popup(message, true);
+}
+
+/// Show an error popup only if generation still matches.
+async fn show_error_popup_if_current(state: &AppStateRef, generation: u64, message: String) {
+    let mut s = state.write().await;
+    if s.screener.generation == generation {
+        s.screener.loading = false;
+        s.show_popup(message, true);
+    }
+}
+
+async fn do_fetch(state: AppStateRef, exchange: &str, categories: &[String], is_refresh: bool) {
     let cat_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
 
     match create_exchange(exchange) {
         Ok(exchange_client) => match fetch_categories(&*exchange_client, &cat_refs).await {
-            Ok(symbols) => {
-                info!("Fetched {} symbols", symbols.len());
-                let mut s = state.write().await;
-                s.set_symbols(symbols);
-                if is_refresh {
-                    s.show_popup("Refresh complete".to_string(), false);
-                }
-            }
-            Err(e) => {
-                let mut s = state.write().await;
-                let prefix = if is_refresh { "Refresh" } else { "Fetch" };
-                s.show_popup(format!("{prefix} failed: {e}"), true);
-            }
+            Ok(symbols) => handle_fetch_success(&state, symbols, is_refresh).await,
+            Err(e) => handle_fetch_error(&state, e.into(), is_refresh).await,
         },
         Err(e) => {
-            let mut s = state.write().await;
-            s.show_popup(format!("Exchange error: {e}"), true);
+            show_error_popup(&state, format!("Exchange error: {e}")).await;
         }
     }
+}
+
+/// Apply screener fetch results to app state (handles generation mismatch, errors, popups).
+async fn apply_screener_results(
+    state: &AppStateRef,
+    result: Result<Vec<crate::models::price::PriceChange>, anyhow::Error>,
+    generation: u64,
+    is_refresh: bool,
+) {
+    match result {
+        Ok(results) => {
+            info!("Screener fetched {} results", results.len());
+            let mut s = state.write().await;
+            if !s.set_screener_results(results, generation) {
+                info!("Discarding stale screener results (generation mismatch)");
+                // Don't touch loading flag — newer fetch owns it
+            } else if is_refresh {
+                s.show_popup("Screener refresh complete".to_string(), false);
+            }
+        }
+        Err(e) => {
+            let prefix = if is_refresh {
+                "Screener refresh"
+            } else {
+                "Screener"
+            };
+            show_error_popup_if_current(state, generation, format!("{prefix} failed: {e}")).await;
+        }
+    }
+}
+
+async fn handle_screener_cancel(state: &AppStateRef, generation: u64) {
+    show_error_popup_if_current(state, generation, "Screener fetch cancelled".to_string()).await;
+}
+
+async fn handle_screener_timeout(state: &AppStateRef, generation: u64) {
+    tracing::warn!("{SCREENER_TIMEOUT_MSG}");
+    show_error_popup_if_current(state, generation, SCREENER_TIMEOUT_MSG.to_string()).await;
+}
+
+async fn do_screener_fetch(
+    state: AppStateRef,
+    exchange: String,
+    categories: Vec<String>,
+    mode: ScreenerMode,
+    is_refresh: bool,
+) {
+    // Increment generation before fetch to tag this request
+    let generation = {
+        let mut s = state.write().await;
+        s.screener.generation += 1;
+        s.screener.loading = true;
+        s.screener.generation
+    };
+
+    // Use oneshot channel to bridge sync→async
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let exchange_clone = exchange.clone();
+    let cats: Vec<String> = categories.clone();
+
+    tokio::task::spawn_blocking(move || {
+        let cat_refs: Vec<&str> = cats.iter().map(|s| s.as_str()).collect();
+        let result = fetch_screener_data_blocking(&exchange_clone, &cat_refs, mode);
+        let _ = tx.send(result);
+    });
+
+    // Receive result in async context with 30s timeout
+    let result = match timeout(Duration::from_secs(SCREENER_TIMEOUT_SECS), rx).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => {
+            handle_screener_cancel(&state, generation).await;
+            return;
+        }
+        Err(_) => {
+            handle_screener_timeout(&state, generation).await;
+            return;
+        }
+    };
+
+    apply_screener_results(&state, result, generation, is_refresh).await;
 }

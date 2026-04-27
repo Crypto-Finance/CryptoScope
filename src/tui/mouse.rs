@@ -13,8 +13,7 @@ pub enum ClickAction {
     ScrollUp,
     ScrollDown,
     TableRow(usize),
-    #[allow(dead_code)]
-    HeaderTab(HeaderTab),
+    ScreenerTableRow(usize),
     ScrollbarTrack(ScrollDirection),
 }
 
@@ -25,16 +24,8 @@ pub enum ScrollDirection {
     Down,
 }
 
-/// Header tabs that can be clicked.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(dead_code)]
-pub enum HeaderTab {
-    SymbolList,
-    StatsDashboard,
-}
-
 /// Collection of clickable regions for hit testing.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ClickRegions {
     pub regions: Vec<ClickRegion>,
 }

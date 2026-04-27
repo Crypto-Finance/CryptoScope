@@ -9,9 +9,16 @@ pub const TAG: Color = Color::Rgb(86, 130, 177);
 pub const WHITE: Color = Color::Rgb(200, 200, 200);
 pub const DIM: Color = Color::Rgb(100, 100, 120);
 pub const RED: Color = Color::Rgb(255, 80, 80);
-#[allow(dead_code)]
-pub const YELLOW: Color = Color::Rgb(255, 255, 100);
 pub const BLUE: Color = Color::Rgb(47, 47, 228);
+
+// Price change colors for screener
+pub const PRICE_UP: Color = Color::Rgb(0, 200, 100);
+pub const PRICE_DOWN: Color = Color::Rgb(255, 80, 80);
+
+/// Get color for price change percentage
+pub fn change_color(percent: f64) -> Color {
+    if percent >= 0.0 { PRICE_UP } else { PRICE_DOWN }
+}
 
 /// Create a styled block with the cyberdeck theme.
 ///

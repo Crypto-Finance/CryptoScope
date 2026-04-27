@@ -20,6 +20,11 @@ Fetch and analyze perpetual/derivative symbols from crypto exchanges with a clea
 - ✅ Two Modes — Ticker mode (fast) and K-line mode (accurate)
 - ✅ Filtering — Filter by min change %, min volume, symbol search, top N
 - ✅ Color Output — Green for gains, red for lossers
+- ✅ **Multi-View TUI** — Symbol List, Screener, and Stats Dashboard views
+- ✅ **Contract Type Filtering** — Filter by Linear/Inverse Perpetual/Futures (keys `1`-`4`)
+- ✅ **Screener Table** — Sortable table with Change%, Volume, and Symbol columns
+- ✅ **Mouse Support** — Click rows, scrollbar, and header tabs for navigation
+- ✅ **Popup Messages** — Auto-dismissing status/error notifications (5s or any key)
 
 ## Installation
 
@@ -136,6 +141,27 @@ cryptoscope --help
 - **macOS:** `~/Library/Application Support/cryptoscope/data.db`
 - **Windows:** `%APPDATA%\cryptoscope\data.db`
 
+### Contract Type Filtering
+
+Symbols can be filtered by their contract type using keyboard shortcuts:
+
+| Key | Contract Type | Abbreviation | Description |
+|-----|---------------|--------------|-------------|
+| `1` | Linear Perpetual | LP | USDT-settled, no expiry |
+| `2` | Linear Futures | LF | USDT-settled, fixed expiry |
+| `3` | Inverse Perpetual | IP | BTC-settled, no expiry |
+| `4` | Inverse Futures | IF | BTC-settled, fixed expiry |
+| `0` | All Types | - | Select all contract types |
+
+### TUI Architecture
+
+The TUI is built with a modular architecture:
+- **Multi-View System** — Symbol List, Screener, and Stats Dashboard views
+- **State Extraction** — `SymbolListState`, `ScreenerState`, and `PopupState` for clean separation
+- **Shared Table Utilities** — `table_common` module for consistent table rendering across views
+- **Modular Key Handling** — `key_handler` with `NavResult` enum for clean event dispatch
+- **Mouse Support** — Stateless `MouseState` handler with `TableContext` abstraction
+
 ---
 
 ## Example Output
@@ -145,10 +171,13 @@ cryptoscope --help
 ![TUI](docs/image/TUI.png)
 
 The TUI features:
-- **Symbol table** - Scrollable list with selection highlighting
-- **Stats dashboard** - Toggle with `Tab` or click header tabs to view statistics
-- **Search** - Press `/` to filter symbols in real-time
-- **Refresh** - Press `r` to re-fetch symbols from the API
+- **Multi-View Navigation** — Switch between Symbol List (`l`), Screener (`s`), and Stats Dashboard (`Tab`)
+- **Symbol table** — Scrollable list with selection highlighting, contract type display, and search
+- **Screener table** — Sortable table showing Open, Current, Change%, and Volume 24h with color-coded changes
+- **Stats dashboard** — Toggle with `Tab` or click header tabs to view statistics
+- **Search** — Press `/` to filter symbols in real-time
+- **Contract Type Filtering** — Press `1`-`4` to filter by LP/LF/IP/IF, `0` to select all
+- **Refresh** — Press `r` to re-fetch symbols from the API
 - **Cyberpunk theme** - Dark UI with neon accent colors
 - **Popup messages** - Status/error notifications auto-dismiss after 5 seconds (or press any key to dismiss immediately)
 
@@ -161,22 +190,30 @@ The TUI features:
 | `k` / `↑` | Previous symbol |
 | `/` | Toggle search mode |
 | `Tab` | Toggle symbol list / stats view |
+| `s` | Switch to Screener view |
+| `l` | Switch to Symbol List view |
 | `r` | Refresh data |
+| `1`-`4` | Filter by contract type (LP/LF/IP/IF) |
+| `0` | Select all contract types |
+| `S` | Toggle screener sort direction |
+| `o` / `O` | Cycle screener sort field (Change% → Volume → Symbol) |
 
 **Mouse support:**
 - Scroll wheel to navigate
 - Click rows to select symbols
 - Click scrollbar track to page up/down
+- Click header tabs to switch views
+- Click header tabs to switch views
 
 ### Screener Output
 
 ```
-Symbol     |       Open |   Current |   Change % | Change Value | Volume 24h
------------+------------+-----------+------------+--------------+-----------
-BTCUSDT    |   84200.00 |  86500.00 |     +2.73% |      +2300.00 |    $1.52B
-ETHUSDT    |    2450.00 |   2380.00 |     -2.86% |       -70.00 |    $890.45M
-SOLUSDT    |     145.50 |    152.30 |     +4.67% |        +6.80 |    $456.12M
-DOGEUSDT   |       0.15 |      0.14 |     -6.67% |       -0.01 |    $234.56M
+Symbol     | Category |         Open |   Current |   Change % |   Volume 24h
+-----------+----------+--------------+-----------+------------+-------------
+BTCUSDT    | linear   |     84200.00 |  86500.00 |     +2.73% |      $1.52B
+ETHUSDT    | linear   |      2450.00 |   2380.00 |     -2.86% |    $890.45M
+SOLUSDT    | linear   |       145.50 |    152.30 |     +4.67% |    $456.12M
+DOGEUSDT   | linear   |         0.15 |      0.14 |     -6.67% |    $234.56M
 ```
 
 > Colors: 🟢 Green = gains, 🔴 Red = losses (terminal-dependent)
@@ -197,10 +234,10 @@ Categories: linear, inverse
     LINEAR (USDT Perpetual): 642
 
   By Contract Type:
-    LinearPerpetual: 606
-    LinearFutures: 36
-    InversePerpetual: 23
-    InverseFutures: 4
+    LinPerp (Linear Perpetual): 606
+    LinFut (Linear Futures): 36
+    InvPerp (Inverse Perpetual): 23
+    InvFut (Inverse Futures): 4
 
 📋 Sample Symbols (first 20):
   0GUSDT, 1000000BABYDOGEUSDT, 1000000CHEEMSUSDT, ...
