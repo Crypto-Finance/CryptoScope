@@ -3,12 +3,12 @@
 //! This module contains common helper functions used across multiple
 //! API handlers to reduce code duplication.
 
-use std::sync::Arc;
-use tracing::{warn, error};
 use super::error::AppError;
-use crate::core::db::{create_connection, init_schema, Database};
+use crate::core::db::{Database, create_connection, init_schema};
 use crate::core::exchange::Exchange;
 use crate::core::models::Symbol;
+use std::sync::Arc;
+use tracing::{error, warn};
 
 /// Initialize database connection and schema.
 ///

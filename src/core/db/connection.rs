@@ -17,9 +17,8 @@ use std::os::unix::fs::PermissionsExt;
 pub fn get_database_path() -> Result<PathBuf> {
     // Check for DATABASE_PATH environment variable
     if let Ok(db_path) = std::env::var("DATABASE_PATH") {
-        return validate_and_normalize_path(&db_path).map_err(|e| {
-            CryptoScopeError::DbInternal(format!("Path validation failed: {}", e))
-        });
+        return validate_and_normalize_path(&db_path)
+            .map_err(|e| CryptoScopeError::DbInternal(format!("Path validation failed: {}", e)));
     }
 
     // Fall back to standard location

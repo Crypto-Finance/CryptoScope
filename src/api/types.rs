@@ -93,7 +93,11 @@ pub struct ScreenerQuery {
     #[serde(default = "default_top")]
     pub top: usize,
     /// Minimum change percent filter (e.g., 5.0 for 5%)
-    #[validate(range(min = 0.0, max = 100.0, message = "Min change must be between 0 and 100"))]
+    #[validate(range(
+        min = 0.0,
+        max = 100.0,
+        message = "Min change must be between 0 and 100"
+    ))]
     #[serde(default)]
     pub min_change: Option<f64>,
 }

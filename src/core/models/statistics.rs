@@ -84,7 +84,7 @@ impl Statistics {
     /// Directly aggregates counts by category and contract type
     /// without requiring intermediate Symbol conversion.
     pub fn from_price_changes<'a>(
-        changes: impl IntoIterator<Item = &'a crate::core::models::PriceChange>
+        changes: impl IntoIterator<Item = &'a crate::core::models::PriceChange>,
     ) -> Self {
         let mut by_category = HashMap::new();
         let mut by_contract_type = HashMap::new();

@@ -2,17 +2,17 @@
 //!
 //! Provides token generation, validation, and Axum extractors for authenticated requests.
 
-use axum::{
-    extract::{FromRequestParts, State},
-    http::{request::Parts, StatusCode},
-    response::{IntoResponse, Response},
-    Json,
-};
 use argon2::{
-    password_hash::{PasswordHash, PasswordVerifier},
     Argon2,
+    password_hash::{PasswordHash, PasswordVerifier},
 };
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use axum::{
+    Json,
+    extract::{FromRequestParts, State},
+    http::{StatusCode, request::Parts},
+    response::{IntoResponse, Response},
+};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
@@ -48,14 +48,16 @@ pub struct AdminCredentials {
 /// - JWT_SECRET is not set
 /// - JWT_SECRET is less than 32 characters
 pub fn load_keys() -> Result<Keys, String> {
-    let secret = std::env::var("JWT_SECRET")
-        .map_err(|_| "JWT_SECRET environment variable must be set. Generate a random 32+ character secret.".to_string())?;
-    
+    let secret = std::env::var("JWT_SECRET").map_err(|_| {
+        "JWT_SECRET environment variable must be set. Generate a random 32+ character secret."
+            .to_string()
+    })?;
+
     // Minimum 32 characters for security
     if secret.len() < 32 {
         return Err("JWT_SECRET must be at least 32 characters for security".to_string());
     }
-    
+
     Ok(Keys::new(secret.as_bytes()))
 }
 
@@ -66,10 +68,14 @@ pub fn load_keys() -> Result<Keys, String> {
 pub fn load_admin_credentials() -> Result<AdminCredentials, String> {
     let username = std::env::var("ADMIN_USER")
         .map_err(|_| "ADMIN_USER environment variable must be set".to_string())?;
-    let password_hash = std::env::var("ADMIN_PASS_HASH")
-        .map_err(|_| "ADMIN_PASS_HASH environment variable must be set (use argon2id PHC format)".to_string())?;
-    
-    Ok(AdminCredentials { username, password_hash })
+    let password_hash = std::env::var("ADMIN_PASS_HASH").map_err(|_| {
+        "ADMIN_PASS_HASH environment variable must be set (use argon2id PHC format)".to_string()
+    })?;
+
+    Ok(AdminCredentials {
+        username,
+        password_hash,
+    })
 }
 
 /// Build JWT validation configuration with explicit security settings
@@ -99,7 +105,10 @@ pub struct Claims {
 impl FromRequestParts<AppState> for Claims {
     type Rejection = AuthError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         // Extract Authorization header manually
         let auth_header = parts
             .headers
@@ -112,15 +121,11 @@ impl FromRequestParts<AppState> for Claims {
             .strip_prefix("Bearer ")
             .ok_or(AuthError::InvalidToken)?;
 
-        let token_data = decode::<Claims>(
-            token,
-            &state.keys.decoding,
-            &build_validation(),
-        )
-        .map_err(|e| {
-            tracing::debug!("Token validation failed: {:?}", e);
-            AuthError::InvalidToken
-        })?;
+        let token_data = decode::<Claims>(token, &state.keys.decoding, &build_validation())
+            .map_err(|e| {
+                tracing::debug!("Token validation failed: {:?}", e);
+                AuthError::InvalidToken
+            })?;
 
         Ok(token_data.claims)
     }
@@ -158,12 +163,7 @@ impl IntoResponse for AuthError {
         }));
 
         if include_www_auth {
-            (
-                status,
-                [(WWW_AUTHENTICATE, "Bearer".to_string())],
-                body,
-            )
-                .into_response()
+            (status, [(WWW_AUTHENTICATE, "Bearer".to_string())], body).into_response()
         } else {
             (status, body).into_response()
         }
@@ -275,5 +275,4 @@ mod tests {
         assert_eq!(decoded.claims.sub, "test_user");
         assert!(decoded.claims.roles.contains(&"user".to_string()));
     }
-
 }

@@ -1,12 +1,12 @@
 //! Cache refresh endpoints.
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use tracing::{error, info};
 
 use super::AppState;
+use super::auth::Claims;
 use super::error::{AppError, HandlerResult};
 use super::types::RefreshResponse;
-use super::auth::Claims;
 use super::utils::init_database;
 
 /// Force refresh of cached data

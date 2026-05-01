@@ -8,8 +8,8 @@
 //! ```
 
 use argon2::{
-    password_hash::{PasswordHasher, SaltString},
     Argon2,
+    password_hash::{PasswordHasher, SaltString},
 };
 use rand::thread_rng;
 use std::io::{self, BufRead};
@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
         // Read from stdin (piped input)
         let stdin = io::stdin();
         let mut lines = stdin.lock().lines();
-        
+
         if let Some(Ok(line)) = lines.next() {
             line.trim().to_string()
         } else {
@@ -39,7 +39,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     if password.len() < 12 {
-        eprintln!("Warning: Password is less than 12 characters. Consider using a longer password.");
+        eprintln!(
+            "Warning: Password is less than 12 characters. Consider using a longer password."
+        );
     }
 
     // Generate a random salt

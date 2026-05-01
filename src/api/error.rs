@@ -1,10 +1,10 @@
 //! Error types for the API layer.
 
 use axum::{
+    Json,
     extract::rejection::QueryRejection,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use validator::Validate;
 
@@ -85,9 +85,11 @@ impl AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
-            AppError::QueryParseError(e) => {
-                (StatusCode::BAD_REQUEST, Json(ErrorResponse::new(e.to_string()))).into_response()
-            }
+            AppError::QueryParseError(e) => (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(e.to_string())),
+            )
+                .into_response(),
             AppError::ValidationError(e) => {
                 let validation_error: ValidationErrorResponse = e.into();
                 (

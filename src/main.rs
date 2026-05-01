@@ -2,15 +2,12 @@
 //!
 //! Axum-based REST API with OpenAPI documentation, authentication, rate limiting, and CORS.
 
-use axum::Router;
 use anyhow::Context;
-use axum::http::{header, HeaderValue, Method};
-use tower_http::{
-    cors::CorsLayer,
-    trace::TraceLayer,
-};
+use axum::Router;
+use axum::http::{HeaderValue, Method, header};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -23,12 +20,17 @@ use api::AppState;
 fn init_logging() -> anyhow::Result<()> {
     // Load .env file (if exists)
     dotenvy::dotenv().ok();
-    
+
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,cryptoscope=debug"));
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(tracing_subscriber::fmt::layer().with_target(false).with_thread_ids(false).with_line_number(false))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .with_thread_ids(false)
+                .with_line_number(false),
+        )
         .init();
     Ok(())
 }
@@ -38,7 +40,10 @@ fn pre_init_db_schema(db_path: &str) {
     match core::db::create_connection() {
         Ok(conn) => {
             if let Err(e) = core::db::init_schema(&conn) {
-                info!("Database schema already exists or initialization skipped: {}", e);
+                info!(
+                    "Database schema already exists or initialization skipped: {}",
+                    e
+                );
             } else {
                 info!("Database schema initialized at {}", db_path);
             }
@@ -51,8 +56,8 @@ fn pre_init_db_schema(db_path: &str) {
 
 /// Resolve and validate DATABASE_PATH from environment variable
 fn resolve_db_path() -> anyhow::Result<String> {
-    let database_path = std::env::var("DATABASE_PATH")
-        .unwrap_or_else(|_| "./cryptoscope_data".to_string());
+    let database_path =
+        std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./cryptoscope_data".to_string());
     let db_path = core::utils::path::validate_and_normalize_path(&database_path)
         .map_err(|e| anyhow::anyhow!("Invalid DATABASE_PATH: {}", e))?;
     Ok(db_path.to_string_lossy().to_string())
@@ -115,7 +120,7 @@ fn build_app(state: AppState, openapi: utoipa::openapi::OpenApi) -> Router {
         .with_state(state)
         .layer(TraceLayer::new_for_http())
         .layer(cors_layer());
-    
+
     Router::new()
         .merge(SwaggerUi::new("/api-docs/swagger-ui").url("/api-docs/openapi.json", openapi))
         .merge(app)
@@ -126,7 +131,10 @@ async fn main() -> anyhow::Result<()> {
     // Initialize logging
     init_logging()?;
 
-    info!("Starting CryptoScope API server v{}...", env!("CARGO_PKG_VERSION"));
+    info!(
+        "Starting CryptoScope API server v{}...",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // Validate and sanitize database path
     let db_path = resolve_db_path()?;
@@ -135,13 +143,16 @@ async fn main() -> anyhow::Result<()> {
     pre_init_db_schema(&db_path);
 
     // Load JWT keys and admin credentials with proper error handling
-    let keys = api::auth::load_keys()
-        .map_err(|e| anyhow::anyhow!("Failed to load JWT keys: {}", e))?;
+    let keys =
+        api::auth::load_keys().map_err(|e| anyhow::anyhow!("Failed to load JWT keys: {}", e))?;
     let admin_credentials = api::auth::load_admin_credentials()
         .map_err(|e| anyhow::anyhow!("Failed to load admin credentials: {}", e))?;
 
     // Create application state
-    let state = AppState { keys, admin_credentials };
+    let state = AppState {
+        keys,
+        admin_credentials,
+    };
 
     // Generate OpenAPI spec
     let openapi = ApiDoc::openapi();
@@ -154,13 +165,20 @@ async fn main() -> anyhow::Result<()> {
     let addr = format!("0.0.0.0:{port}");
 
     info!("Server listening on {}", addr);
-    info!("OpenAPI docs available at http://{}/api-docs/swagger-ui", addr);
-    info!("OpenAPI JSON available at http://{}/api-docs/openapi.json", addr);
+    info!(
+        "OpenAPI docs available at http://{}/api-docs/swagger-ui",
+        addr
+    );
+    info!(
+        "OpenAPI JSON available at http://{}/api-docs/openapi.json",
+        addr
+    );
 
     // Start the server with connect info for IP-based rate limiting
-    let listener = tokio::net::TcpListener::bind(&addr).await
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
         .with_context(|| format!("Failed to bind to {}", addr));
-    
+
     axum::serve(
         listener?,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
@@ -209,7 +227,7 @@ fn cors_layer() -> CorsLayer {
         let is_production = std::env::var("RUST_ENV")
             .map(|e| e == "production" || e == "prod")
             .unwrap_or(false);
-        
+
         if is_production {
             // Graceful fallback: log error and use restrictive CORS instead of panicking
             tracing::error!(
@@ -219,7 +237,7 @@ fn cors_layer() -> CorsLayer {
             );
             return restrictive_cors();
         }
-        
+
         tracing::warn!("CORS_PERMISSIVE is set - allowing all origins (development only)");
         return CorsLayer::very_permissive();
     }

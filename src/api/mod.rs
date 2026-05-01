@@ -11,12 +11,10 @@ pub mod symbols;
 pub mod types;
 pub mod utils;
 
-use axum::{routing::get, routing::post, Router};
+use axum::{Router, routing::get, routing::post};
 use governor::middleware::StateInformationMiddleware;
 use tower_governor::{
-    governor::GovernorConfigBuilder,
-    key_extractor::PeerIpKeyExtractor,
-    GovernorLayer,
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::PeerIpKeyExtractor,
 };
 
 /// Application state shared across handlers

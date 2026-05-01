@@ -5,7 +5,18 @@
 /// - Inverse: Settled in base currency (e.g., BTC)
 /// - Perpetual: No expiry date
 /// - Futures: Fixed expiry/delivery date
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, utoipa::ToSchema, ts_rs::TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    utoipa::ToSchema,
+    ts_rs::TS,
+)]
 #[ts(export)]
 pub enum ContractType {
     LinearPerpetual,

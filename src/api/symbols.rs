@@ -1,12 +1,12 @@
 //! Symbol/instrument query endpoints.
 
-use axum::{routing::get, Json, Router};
+use axum::{Json, Router, routing::get};
 use tracing::info;
 
 use super::AppState;
 use super::error::{HandlerResult, ValidatedQuery};
 use super::types::{SymbolQuery, SymbolResponse};
-use super::utils::{resolve_exchange, fetch_symbols};
+use super::utils::{fetch_symbols, resolve_exchange};
 
 /// Get symbols from an exchange
 ///

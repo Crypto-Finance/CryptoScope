@@ -215,15 +215,15 @@ mod tests {
         unsafe {
             std::env::set_var("ALLOWED_DB_PATHS", current_dir.to_str().unwrap());
         }
-        
+
         let test_path = current_dir.join("test.db");
         let result = validate_and_normalize_path(test_path.to_str().unwrap());
-        
+
         // Clean up
         unsafe {
             std::env::remove_var("ALLOWED_DB_PATHS");
         }
-        
+
         assert!(result.is_ok());
     }
 

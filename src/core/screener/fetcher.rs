@@ -50,15 +50,13 @@ where
         }
     }
 
-    Err(
-        last_err.unwrap_or_else(|| CryptoScopeError::ApiError {
-            code: -1,
-            message: format!(
-                "All {} retries exhausted for symbol '{}'",
-                MAX_KLINE_RETRIES, symbol
-            ),
-        }),
-    )
+    Err(last_err.unwrap_or_else(|| CryptoScopeError::ApiError {
+        code: -1,
+        message: format!(
+            "All {} retries exhausted for symbol '{}'",
+            MAX_KLINE_RETRIES, symbol
+        ),
+    }))
 }
 
 /// Log final summary and warn if failure rate exceeds 10%.
@@ -145,7 +143,11 @@ impl OpenPriceFetcherShared {
     ///
     /// Uses either ticker mode (fast, rolling 24h) or kline mode (accurate, true
     /// daily open) depending on the `ScreenerMode`. Handles database locking internally.
-    pub async fn fetch_and_save_open_prices(&self, mode: ScreenerMode, category: &str) -> Result<()> {
+    pub async fn fetch_and_save_open_prices(
+        &self,
+        mode: ScreenerMode,
+        category: &str,
+    ) -> Result<()> {
         let prices = match mode {
             ScreenerMode::Ticker => self.fetch_ticker_mode(category).await?,
             ScreenerMode::Kline => self.fetch_kline_mode(category).await?,
@@ -166,26 +168,24 @@ impl OpenPriceFetcherShared {
     async fn fetch_kline_mode(&self, category: &str) -> Result<Vec<(String, f64)>> {
         let tickers = self.exchange.fetch_tickers(category).await?;
         let total = tickers.len();
-        
+
         info!(
-            "Kline mode: Fetching daily k-lines for {} symbols (max {} concurrent)...", 
+            "Kline mode: Fetching daily k-lines for {} symbols (max {} concurrent)...",
             total, MAX_CONCURRENT_KLINE_REQUESTS
         );
-        
+
         let exchange = self.exchange.clone();
         let results: Vec<_> = stream::iter(tickers.into_iter().enumerate())
-            .map(|(i, ticker)| {
-                fetch_single_kline_with_progress(exchange.clone(), ticker, i, total)
-            })
+            .map(|(i, ticker)| fetch_single_kline_with_progress(exchange.clone(), ticker, i, total))
             .buffer_unordered(MAX_CONCURRENT_KLINE_REQUESTS)
             .filter_map(|r| async move { r })
             .collect()
             .await;
-        
+
         let success = results.len();
         let failed = total - success;
         log_fetch_summary(success, failed, total);
-        
+
         Ok(results)
     }
 
@@ -208,8 +208,8 @@ impl OpenPriceFetcherShared {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::test_utils::create_test_db;
     use crate::core::exchange::bybit::BybitClient;
+    use crate::core::test_utils::create_test_db;
 
     #[test]
     fn test_should_fetch_when_no_data() {

@@ -1,8 +1,8 @@
 //! Exchange management endpoints.
 
-use axum::{routing::get, Json, Router};
 use super::AppState;
 use super::types::ExchangeListResponse;
+use axum::{Json, Router, routing::get};
 
 /// List all supported exchanges
 ///

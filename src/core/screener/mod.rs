@@ -131,7 +131,10 @@ mod tests {
             "mock"
         }
 
-        async fn fetch_instruments(&self, _category: &str) -> Result<Vec<crate::core::models::Symbol>> {
+        async fn fetch_instruments(
+            &self,
+            _category: &str,
+        ) -> Result<Vec<crate::core::models::Symbol>> {
             Ok(vec![])
         }
 

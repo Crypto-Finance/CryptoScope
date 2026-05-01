@@ -1,6 +1,6 @@
 //! Price screener endpoints.
 
-use axum::{routing::get, Json, Router};
+use axum::{Json, Router, routing::get};
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -8,10 +8,10 @@ use super::AppState;
 use super::error::{AppError, HandlerResult, ValidatedQuery};
 use super::types::{ScreenerModeQuery, ScreenerQuery, ScreenerResponse};
 use super::utils::{init_database, resolve_exchange};
-use crate::core::exchange::Exchange;
 use crate::core::db::Database;
+use crate::core::exchange::Exchange;
+use crate::core::models::Statistics;
 use crate::core::screener::{Screener, ScreenerMode};
-use crate::core::models::{Statistics};
 
 /// Run the price screener
 ///
@@ -56,15 +56,8 @@ pub async fn run_screener(
     let db = init_database()?;
 
     // Execute screener (create, run, filter, compute stats)
-    let (results, statistics) = execute_screener(
-        exchange,
-        db,
-        mode,
-        categories,
-        query.top,
-        query.min_change,
-    )
-    .await?;
+    let (results, statistics) =
+        execute_screener(exchange, db, mode, categories, query.top, query.min_change).await?;
 
     info!(
         "Screener complete: {} results (filtered from {})",
@@ -120,13 +113,8 @@ async fn execute_screener(
     })?;
 
     // Apply filters
-    results = crate::core::screener::output::apply_filters(
-        &results,
-        Some(top),
-        min_change,
-        None,
-        None,
-    );
+    results =
+        crate::core::screener::output::apply_filters(&results, Some(top), min_change, None, None);
 
     // Compute statistics
     let stats = results_to_statistics(&results);
