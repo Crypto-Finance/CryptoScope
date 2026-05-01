@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Build
+target/
+**/node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env*
+!.env.example
+
+# Database
+data/
+*.db
+
+# Logs
+*.log
