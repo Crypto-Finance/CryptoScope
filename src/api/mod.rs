@@ -11,8 +11,7 @@ pub mod symbols;
 pub mod types;
 pub mod utils;
 
-use axum::{routing::get, routing::post, Json, Router};
-use crate::api::types::ExchangeListResponse;
+use axum::{routing::get, routing::post, Router};
 use governor::middleware::StateInformationMiddleware;
 use tower_governor::{
     governor::GovernorConfigBuilder,
@@ -23,8 +22,6 @@ use tower_governor::{
 /// Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    #[allow(dead_code)]
-    pub db_path: String,
     pub keys: auth::Keys,
     pub admin_credentials: auth::AdminCredentials,
 }
@@ -84,16 +81,4 @@ fn create_rate_limiter(
 )]
 pub async fn health_check() -> &'static str {
     "OK"
-}
-
-/// List all supported exchanges (deprecated - moved to exchanges module)
-/// Kept for OpenAPI schema reference
-#[allow(dead_code)]
-async fn get_exchanges_deprecated() -> Json<ExchangeListResponse> {
-    let exchanges = crate::core::exchange::get_supported_exchanges()
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-
-    Json(ExchangeListResponse { exchanges })
 }

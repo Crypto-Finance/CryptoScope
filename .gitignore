@@ -35,3 +35,6 @@ test-results/
 
 # Documentation internal
 docs/internal
+
+# Session logs
+SESSION_LOG.md
