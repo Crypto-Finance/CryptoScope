@@ -141,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to load admin credentials: {}", e))?;
 
     // Create application state
-    let state = AppState { db_path, keys, admin_credentials };
+    let state = AppState { keys, admin_credentials };
 
     // Generate OpenAPI spec
     let openapi = ApiDoc::openapi();
@@ -201,7 +201,7 @@ async fn shutdown_signal() {
 /// Create CORS layer for cross-origin requests
 ///
 /// Configuration is environment-based:
-/// - Production: Explicit allowlist from ALLOWED_ORIGINS
+/// - Production: Explicit allowlist from CORS_ORIGINS
 /// - Development: localhost variants
 fn cors_layer() -> CorsLayer {
     // Check for permissive mode (development only)
