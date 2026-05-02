@@ -88,10 +88,9 @@ pub struct ScreenerQuery {
     /// Screener mode: kline or mark
     #[serde(default)]
     pub mode: ScreenerModeQuery,
-    /// Number of top results to return (capped at 100)
-    #[validate(range(max = 100, message = "Top value cannot exceed 100"))]
-    #[serde(default = "default_top")]
-    pub top: usize,
+    /// Number of top results to return (capped at 100). Omit to return all results
+    #[validate(range(min = 1, max = 100, message = "Top must be between 1 and 100"))]
+    pub top: Option<usize>,
     /// Minimum change percent filter (e.g., 5.0 for 5%)
     #[validate(range(
         min = 0.0,
@@ -100,10 +99,6 @@ pub struct ScreenerQuery {
     ))]
     #[serde(default)]
     pub min_change: Option<f64>,
-}
-
-fn default_top() -> usize {
-    20
 }
 
 /// Response for GET /api/v1/screener
@@ -288,7 +283,7 @@ mod tests {
             exchange: "bybit".to_string(),
             category: None,
             mode: ScreenerModeQuery::Kline,
-            top: 101,
+            top: Some(101),
             min_change: None,
         };
         assert!(query.validate().is_err());
@@ -297,7 +292,7 @@ mod tests {
             exchange: "bybit".to_string(),
             category: None,
             mode: ScreenerModeQuery::Kline,
-            top: 50,
+            top: Some(50),
             min_change: None,
         };
         assert!(query.validate().is_ok());

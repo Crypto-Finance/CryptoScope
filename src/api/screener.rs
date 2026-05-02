@@ -39,7 +39,7 @@ pub async fn run_screener(
     ValidatedQuery(query): ValidatedQuery<ScreenerQuery>,
 ) -> HandlerResult<ScreenerResponse> {
     info!(
-        "Running screener: exchange={}, category={:?}, mode={:?}, top={}, min_change={:?}",
+        "Running screener: exchange={}, category={:?}, mode={:?}, top={:?}, min_change={:?}",
         query.exchange, query.category, query.mode, query.top, query.min_change
     );
 
@@ -102,7 +102,7 @@ async fn execute_screener(
     db: Database,
     mode: ScreenerMode,
     categories: Vec<String>,
-    top: usize,
+    top: Option<usize>,
     min_change: Option<f64>,
 ) -> Result<(Vec<crate::core::models::PriceChange>, Statistics), AppError> {
     // Create and run screener
@@ -113,8 +113,7 @@ async fn execute_screener(
     })?;
 
     // Apply filters
-    results =
-        crate::core::screener::output::apply_filters(&results, Some(top), min_change, None, None);
+    results = crate::core::screener::output::apply_filters(&results, top, min_change, None, None);
 
     // Compute statistics
     let stats = results_to_statistics(&results);

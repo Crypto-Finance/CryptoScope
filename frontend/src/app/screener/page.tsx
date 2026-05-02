@@ -9,7 +9,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { RefreshCw, TrendingUp, TrendingDown, Filter } from 'lucide-react';
 import type { ScreenerItem } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +18,7 @@ type SortField = 'symbol' | 'current_price' | 'change_percent' | 'change_value' 
 
 export default function ScreenerPage() {
   const [mode, setMode] = useState<'kline' | 'mark'>('kline');
-  const [top, setTop] = useState(20);
+  const [top, setTop] = useState<number | undefined>(undefined);
   const [minChange, setMinChange] = useState('');
   const [sortField, setSortField] = useState<string>('change_percent');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -50,7 +51,7 @@ export default function ScreenerPage() {
       sortable: true,
       render: (item) => (
         <span className="font-mono">
-          ${item.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${item.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 5 })}
         </span>
       ),
     },
@@ -60,7 +61,7 @@ export default function ScreenerPage() {
       sortable: true,
       render: (item) => (
         <span className="font-mono text-muted-foreground">
-          ${item.open_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${item.open_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 5 })}
         </span>
       ),
     },
@@ -92,7 +93,7 @@ export default function ScreenerPage() {
           item.change_value > 0 && 'text-emerald-500',
           item.change_value < 0 && 'text-red-500'
         )}>
-          {item.change_value > 0 ? '+' : ''}{item.change_value.toFixed(2)}
+          {item.change_value > 0 ? '+' : ''}{item.change_value.toFixed(5)}
         </span>
       ),
     },
@@ -189,50 +190,79 @@ export default function ScreenerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>
-            Customize your screener view
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Mode:</span>
-                <Tabs value={mode} onValueChange={(v) => setMode(v as 'kline' | 'mark')}>
-                  <TabsList>
-                    <TabsTrigger value="kline">Kline</TabsTrigger>
-                    <TabsTrigger value="mark">Mark</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Top:</span>
-                <Input
-                  type="number"
-                  value={top}
-                  onChange={(e) => setTop(parseInt(e.target.value) || 20)}
-                  className="w-20"
-                  min={5}
-                  max={100}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Min Change %:</span>
-                <Input
-                  type="number"
-                  value={minChange}
-                  onChange={(e) => setMinChange(e.target.value)}
-                  placeholder="0"
-                  className="w-24"
-                  step={0.1}
-                />
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Filters</CardTitle>
+              <CardDescription>
+                Customize your screener view
+              </CardDescription>
             </div>
+            <Dialog>
+              <DialogTrigger
+                render={(props) => (
+                  <Button variant="outline" size="sm" {...props}>
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filter
+                  </Button>
+                )}
+              />
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Screener Filters</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Mode</label>
+                    <Tabs value={mode} onValueChange={(v) => setMode(v as 'kline' | 'mark')}>
+                      <TabsList>
+                        <TabsTrigger value="kline">Kline</TabsTrigger>
+                        <TabsTrigger value="mark">Mark</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Top (Optional)</label>
+                    <Input
+                      type="number"
+                      value={top || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const parsed = val ? parseInt(val, 10) : undefined;
+                        setTop(parsed !== undefined && Number.isNaN(parsed) ? undefined : parsed);
+                      }}
+                      placeholder="All"
+                      min={5}
+                      max={100}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty to show all symbols
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Min Change %</label>
+                    <Input
+                      type="number"
+                      value={minChange}
+                      onChange={(e) => setMinChange(e.target.value)}
+                      placeholder="0"
+                      className="w-full"
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose
+                    render={(props) => (
+                      <Button {...props}>Done</Button>
+                    )}
+                  />
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <DataTable
