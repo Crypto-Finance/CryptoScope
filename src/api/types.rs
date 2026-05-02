@@ -283,7 +283,7 @@ mod tests {
             exchange: "bybit".to_string(),
             category: None,
             mode: ScreenerModeQuery::Kline,
-            top: 101,
+            top: Some(101),
             min_change: None,
         };
         assert!(query.validate().is_err());
@@ -292,7 +292,7 @@ mod tests {
             exchange: "bybit".to_string(),
             category: None,
             mode: ScreenerModeQuery::Kline,
-            top: 50,
+            top: Some(50),
             min_change: None,
         };
         assert!(query.validate().is_ok());
