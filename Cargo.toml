@@ -1,13 +1,16 @@
 [package]
 name = "cryptoscope"
-version = "0.5.0"
+version = "1.0.0"
 edition = "2024"
-description = "Multi-exchange crypto symbols intelligence tool"
+description = "CryptoScope - Multi-exchange crypto symbols intelligence API"
 authors = ["CryptoScope Team"]
 
 [dependencies]
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
+
+# Async utilities
+futures = "0.3"
 
 # HTTP client
 reqwest = { version = "0.13", features = ["json"] }
@@ -15,9 +18,6 @@ reqwest = { version = "0.13", features = ["json"] }
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# CLI framework
-clap = { version = "4.4", features = ["derive"] }
 
 # Error handling
 thiserror = "2.0"
@@ -30,22 +30,40 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Async trait support
 async-trait = "0.1"
 
-# For better table output
-terminal_size = "0.4"
-
-# TUI framework
-ratatui = "0.29"
-crossterm = "0.29"
-unicode-width = "0.2"
-
 # Database
 rusqlite = { version = "0.39", features = ["bundled"] }
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
+time = { version = "0.3", features = ["macros"] }
 
 # Cross-platform directories
 dirs = "6.0"
 
-# Terminal colors
-colored = "3.1"
+# Web framework
+axum = { version = "0.8", features = ["macros"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-axum = "0.2"
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+ts-rs = "10"
+
+# Authentication
+jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
+axum-extra = { version = "0.10", features = ["typed-header"] }
+argon2 = "0.5"
+rand = "0.8"
+
+# Rate Limiting
+tower_governor = { version = "0.8", features = ["axum", "tracing"] }
+governor = "0.10"
+
+# Input Validation
+validator = { version = "0.20", features = ["derive"] }
+regex = "1.11"
+
+# Path Security
+# normpath removed - using manual path normalization instead
+
+# Environment variables
+dotenvy = "0.15"

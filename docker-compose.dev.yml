@@ -1,0 +1,63 @@
+# WARNING: Development-only configuration. DO NOT use in production.
+# Uses host UID:GID for volume mount compatibility.
+version: '3.8'
+
+services:
+  # Backend API service with hot-reload (cargo-watch)
+  backend:
+    image: rust:1.80-slim
+    user: "1000:1000"
+    container_name: cryptoscope-backend-dev
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reload
+      - .:/app
+      # Cache cargo dependencies
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      # Persist SQLite database
+      - ./data:/app/data
+    environment:
+      - RUST_LOG=${RUST_LOG:-debug}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/cryptoscope.db}
+    command: >
+      sh -c "apt-get update && apt-get install -y pkg-config libssl-dev
+             && cargo install cargo-watch
+             && cargo watch -x 'run'"
+    networks:
+      - cryptoscope-network
+
+  # Frontend service with hot-reload (npm run dev)
+  frontend:
+    image: node:20-alpine
+    user: "1000:1000"
+    container_name: cryptoscope-frontend-dev
+    working_dir: /app/frontend
+    ports:
+      - "3001:3001"
+    volumes:
+      # Mount source code for hot-reload
+      - ./frontend:/app/frontend
+      # Cache node_modules
+      - node_modules:/app/frontend/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:3000}
+      - NODE_ENV=development
+    command: >
+      sh -c "npm install
+             && npm run dev -- -H 0.0.0.0 -p 3001"
+    depends_on:
+      - backend
+    networks:
+      - cryptoscope-network
+
+networks:
+  cryptoscope-network:
+    driver: bridge
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  node_modules:

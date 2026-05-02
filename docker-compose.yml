@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Backend API service (Rust + Axum)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: cryptoscope-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/cryptoscope.db}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cryptoscope-network
+
+  # Frontend service (Next.js)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cryptoscope-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:3000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cryptoscope-network
+
+networks:
+  cryptoscope-network:
+    driver: bridge
+
+volumes:
+  backend-data:

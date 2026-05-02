@@ -1,4 +1,38 @@
-/target
-docs/internal
+# Dependencies
+node_modules/
+target/
+
+# Generated files
+bindings/
+
+# Database
+*.db
+data/
+
+# Environment
 .env
-.env.*
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+coverage/
+test-results/
+
+# Documentation internal
+docs/internal
+
+# Session logs
