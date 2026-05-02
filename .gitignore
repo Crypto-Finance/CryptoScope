@@ -4,7 +4,6 @@ target/
 
 # Generated files
 bindings/
-*.ts
 
 # Database
 *.db
