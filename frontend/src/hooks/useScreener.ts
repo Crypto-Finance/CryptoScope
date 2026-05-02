@@ -16,10 +16,10 @@ export function useScreener(params: UseScreenerParams = {}) {
   const {
     exchange = 'bybit',
     mode = 'kline',
-    top = 20,
-    minChange = 0,
+    top,
+    minChange,
     enabled = true,
-    refetchInterval = 10000, // 10 seconds for screener
+    refetchInterval = 10000,
   } = params;
 
   return useQuery<ScreenerItem[], Error>({
@@ -27,7 +27,7 @@ export function useScreener(params: UseScreenerParams = {}) {
     queryFn: () => screenerApi.screen({ exchange, mode, top, min_change: minChange }),
     enabled,
     refetchInterval,
-    staleTime: 3000, // Consider data fresh for 3 seconds
+    staleTime: 3000,
     retry: 2,
   });
 }
