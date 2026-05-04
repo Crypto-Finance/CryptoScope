@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSymbols } from '@/hooks/useSymbols';
 import { DataTable, type Column } from '@/components/DataTable';
 import { CategoryFilter, type CategoryValue } from '@/components/CategoryFilter';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { TerminalInput, FilterChip, StitchCard, StitchCardHeader, StitchCardContent } from '@/components/stitch';
+import { CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { CryptoSymbol } from '@/lib/api';
+import { getSortedData } from '@/lib/sort';
+import { useSortState } from '@/hooks/useSortState';
 
 export default function SymbolsPage() {
   const [category, setCategory] = useState<CategoryValue>('all');
@@ -37,6 +39,32 @@ export default function SymbolsPage() {
     category: category === 'all' ? undefined : category,
     search: debouncedSearch || undefined,
   });
+
+  // Track active filters for FilterChip display
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; onDismiss: () => void }> = [];
+    
+    if (category !== 'all') {
+      filters.push({
+        key: 'category',
+        label: `Category: ${category}`,
+        onDismiss: () => setCategory('all'),
+      });
+    }
+    
+    if (debouncedSearch) {
+      filters.push({
+        key: 'search',
+        label: `Search: "${debouncedSearch}"`,
+        onDismiss: () => {
+          setSearch('');
+          setDebouncedSearch('');
+        },
+      });
+    }
+    
+    return filters;
+  }, [category, debouncedSearch]);
 
   const columns: Column<CryptoSymbol>[] = [
     {
@@ -83,31 +111,16 @@ export default function SymbolsPage() {
     },
   ];
 
-  const [sortKey, setSortKey] = useState<string>('symbol');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const { sortKey, sortDirection, handleSort } = useSortState({
+    defaultKey: 'symbol',
+    defaultDirection: 'asc',
+  });
 
-  const handleSort = (key: string) => {
-    if (sortKey === key) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedData = (Array.isArray(symbols) ? symbols : []).sort((a, b) => {
-        const aValue = sortKey.includes('.')
-          ? sortKey.split('.').reduce((acc, part) => acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined, a as unknown)
-          : (a as unknown as Record<string, unknown>)[sortKey];
-        const bValue = sortKey.includes('.')
-          ? sortKey.split('.').reduce((acc, part) => acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined, b as unknown)
-          : (b as unknown as Record<string, unknown>)[sortKey];
-
-        if (aValue === undefined || bValue === undefined || aValue === null || bValue === null) return 0;
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
+  const sortedData = getSortedData(
+    Array.isArray(symbols) ? symbols : [],
+    sortKey,
+    sortDirection,
+  );
 
   return (
     <div className="space-y-6">
@@ -136,34 +149,63 @@ export default function SymbolsPage() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>
-            Filter symbols by category or search by name
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <CategoryFilter
-                value={category}
-                onChange={setCategory}
-                variant="tabs"
-              />
-            </div>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search symbols..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+      <StitchCard>
+        <StitchCardHeader>
+          <div>
+            <CardTitle>Filters</CardTitle>
+            <CardDescription>
+              Filter symbols by category or search by name
+            </CardDescription>
           </div>
-        </CardContent>
-      </Card>
+        </StitchCardHeader>
+        <StitchCardContent>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <CategoryFilter
+                  value={category}
+                  onChange={setCategory}
+                  variant="tabs"
+                />
+              </div>
+              <div className="w-full md:w-80">
+                <TerminalInput
+                  placeholder="Search symbols..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  variant="compact"
+                />
+              </div>
+            </div>
+            
+            {/* Active Filters */}
+            {activeFilters.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Active filters:</span>
+                {activeFilters.map((filter) => (
+                  <FilterChip
+                    key={filter.key}
+                    label={filter.label}
+                    onDismiss={filter.onDismiss}
+                  />
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCategory('all');
+                    setSearch('');
+                    setDebouncedSearch('');
+                  }}
+                  className="h-6 text-xs hover:bg-muted"
+                >
+                  Clear all
+                </Button>
+              </div>
+            )}
+          </div>
+        </StitchCardContent>
+      </StitchCard>
 
       <DataTable
         columns={columns}
