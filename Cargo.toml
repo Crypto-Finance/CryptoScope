@@ -61,7 +61,7 @@ governor = "0.10"
 
 # Input Validation
 validator = { version = "0.20", features = ["derive"] }
-regex = "1.11"
+regex = "1.12"
 
 # Path Security
 # normpath removed - using manual path normalization instead
